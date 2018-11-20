@@ -1,0 +1,14 @@
+# Artemis Fowarder systemd service unit
+
+[Unit]
+Description=artemis daemon
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/artemisFInit start
+RemainAfterExit=true
+ExecReload=/usr/sbin/artemisFInit restart
+ExecStop=/usr/sbin/artemisFInit stop
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,76 @@
+#!/bin/bash
+# Title: sensor-setup
+# Description: This script will automate the tasks required to install artemis forwarder nodes in a distributed deployment architecture
+# Author: Andrew T. Withers
+# Version 1.00.00
+
+# The source directory that is to be monitored by the artemis sensors.
+DIR="$1"
+
+# Add the source directory to the artemis.conf file
+sed -i "s/SDIR=/SDIR=$DIR/" /etc/artemis.conf
+
+# Initialize a flag that will indicate whether or not mlocate should be removed after installation
+CLEAN=0
+
+# Check for a running instanace of Artemis
+if [[ -n $(pgrep -x artemis_forwarder) ]]; then
+        echo "Shutting down Artemis-forwarder..."
+        service artemis_fowarder stop
+fi
+
+echo "Installing Artemis sensor node..."
+
+# Determine if mlocate needs to be installed
+apt-get update -qq
+if ! dpkg --get-selections | grep -v deinstall | grep -q mlocate; then
+        CLEAN=1
+        apt-get -y install mlocate > /dev/null 2>&1
+fi
+
+
+
+# Search for extract.bro
+updatedb
+case $(locate extract.bro | grep -vc /tmp/artemis/extract.bro) in
+        0)
+                echo "Unable to locate extract.bro file. Verify that Bro is installed and properly configured to extract files."
+                echo "Aborting installation..."
+                if [[ $CLEAN -eq 1 ]]; then
+                        apt-get -y purge mlocate > /dev/null 2>&1
+                fi
+                exit 1
+                ;;
+        1)
+                EXTLOC=$(locate extract.bro | grep -v /tmp/artemis/extract.bro)
+                ;;
+        *)
+                LIST=($(locate extract.bro | grep -v /tmp/artemis/extract.bro))
+                printf "Mulitple instances of extract.bro were found: \n"
+                for ((i=0; i<"${#LIST[@]}"; i++)); do
+                        echo "$((i+1))) ${LIST[$i]}"
+                done
+                read -p "Please select the correct location [1-$i]: " SELECT
+                while [[ $SELECT -lt 1 ]] || [[ $SELECT -gt $i ]] || ! [[ $SELECT =~ ^[1-9]+$ ]]; do
+                        echo "Invalid selection."
+                        read -p "Please select the correct location [1-${#LIST[@]}]: " SELECT
+                done
+                EXTLOC="${LIST[$((SELECT-1))]}"
+                ;;
+esac
+
+mkdir -p /opt/artemis/
+cp /tmp/artemis/extract.bro "$EXTLOC"
+cp /tmp/artemis/sensor-setup /opt/artemis/
+
+# Reload systemctl
+systemctl daemon-reload > /dev/null 2>&1
+systemctl enable artemis > /dev/null 2>&1
+
+# Remove mlocate if it was not previously installed
+if [[ $CLEAN -eq 1 ]]; then
+        echo "Cleaning up..."
+        apt-get -y purge mlocate > /dev/null 2>&1
+fi
+rm -r /tmp/artemis/
+
