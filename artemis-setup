@@ -297,6 +297,20 @@ if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq mys
         # Set a random password for the mysql root account
         mysqladmin -u root -p'password' password "$(date +%s%N | sha256sum | base64 | head -c 32)" > /dev/null 2>&1
 fi
+if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -qx syslog-ng; then
+	echo "Installing syslog-ng..."
+	apt-get -y install syslog-ng-core > /dev/null 2>&1
+fi
+
+# Configure syslog-ng to receive syslogs from remote hosts
+ufw allow from any to any port 514 proto udp
+cat <<EOF >> /etc/syslog-ng/syslog-ng.conf
+
+source net { udp(); };
+destination remote { file("/opt/artemis/logs/artemis-files.log"); };
+log { source(net); destination(remote); };
+EOF
+service syslog-ng restart
 
 # Create /etc/artemis.conf
 echo "Generating /etc/artemis.conf..."
@@ -323,6 +337,7 @@ fi
 cp ./artemis-setup /opt/artemis/
 cp ./scan_node/scripts/artemis /usr/bin/artemis
 cp ./scan_node/scripts/artemis-logfile-cleanup /usr/bin/artemis-logfile-cleanup
+cp ./scan_node/scripts/artemis-brolog-cleanup /usr/bin/artemis-brolog-cleanup
 cp ./scan_node/scripts/artemis-logRepair /usr/bin/artemis-logRepair
 cp ./scan_node/scripts/orion /usr/bin/orion
 cp ./scan_node/scripts/arteStat /usr/bin/arteStat
@@ -331,6 +346,7 @@ cp ./scan_node/scripts/artemis-logstable-cleanup /usr/bin/artemis-logstable-clea
 cp ./scan_node/scripts/parsOpts.sh /opt/artemis/
 cp ./scan_node/scripts/artemisInit /usr/sbin/artemisInit
 
+cp ./scan_node/conf/artemis-brolog-cron /etc/cron.d/artemis-brolog-cron
 cp ./scan_node/conf/artemis-logfile-cron /etc/cron.d/artemis-logfile-cron
 cp ./scan_node/conf/artemis-logstable-cron /etc/cron.d/artemis-logstable-cron
 cp ./scan_node/conf/artemis-logRepair-cron /etc/cron.d/artemis-logRepair-cron
@@ -367,7 +383,7 @@ cat <<EOF > /tmp/artemis.conf
 VERSION=$VERSION
 
 # Scanner node
-SCANNER=$HOSTNAME
+SCANNER=$HOSTNAME.$(cat /etc/mailname)
 
 # Source directory. Directory to be monitored by Artemis. All files added to this directory will be inspected by Artemis.
 SDIR=
@@ -415,4 +431,8 @@ EOF
 done
 
 rm /tmp/artemis.conf
+echo "Installation complete"
+echo "Starting Artemis..."
+service artemis start
+exit
 

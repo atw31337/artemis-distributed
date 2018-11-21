@@ -1,0 +1,367 @@
+#!/bin/bash
+# Title: artemis
+# Version: 1.00.00
+#
+#
+#   ________  ________  _________  _______   _____ ______   ___  ________
+#  |\   __  \|\   __  \|\___   ___\\  ___ \ |\   _ \  _   \|\  \|\   ____\
+#  \ \  \|\  \ \  \|\  \|___ \  \_\ \   __/|\ \  \\\__\ \  \ \  \ \  \___|_
+#   \ \   __  \ \   _  _\   \ \  \ \ \  \_|/_\ \  \\|__| \  \ \  \ \_____  \
+#    \ \  \ \  \ \  \\  \|   \ \  \ \ \  \_|\ \ \  \    \ \  \ \  \|____|\  \
+#     \ \__\ \__\ \__\\ _\    \ \__\ \ \_______\ \__\    \ \__\ \__\____\_\  \
+#      \|__|\|__|\|__|\|__|    \|__|  \|_______|\|__|     \|__|\|__|\_________\
+#                                                                  \|_________|
+#
+#
+#
+# This program is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with this program.
+# If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
+
+CONF=/etc/artemis.conf
+
+source /opt/artemis/parsOpts.sh
+
+usage() {
+cat <<EOF
+
+Artemis Network Traffic Virus Monitor
+Usage: artemis [OPTION]
+
+	Options:
+
+		-h	   		This message
+		-v			Print version information
+		-f	    		Flush the hash cache
+		-w <SHA256 Hash>	Add a SHA256 hash to the whitelist
+		-b <SHA256 Hash>	Add a SHA256 hash to the blacklist
+
+EOF
+}
+
+LogsEntry() {
+SIZE=$(du -b "$1" | awk '{print $1}')
+FILETYPE=$(echo "$3" | cut -d'.' -f2)
+LOGSID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO Logs (DateTime, Hash, FileName, FileSize, FileType) \
+VALUES ('$(echo "$(date +%Y-%m-%d) $(date +%T)")', '$2', '$3', $SIZE, '$FILETYPE'); SELECT LAST_INSERT_ID();")
+}
+
+sendAlert() {
+TFILE=$(mktemp -p /tmp/artemis/)	# Temporary file for alert email output
+printf "From: %s\nTo: %s\nSubject: Malware Detected!\n\n" "$HOSTNAME" "$EMAIL"  > "$TFILE"
+printf "%s: %s has detected malware on the network.\n " "$TSTAMP" "$HOSTNAME" >> "$TFILE"
+printf "SHA256: %s\n" "$HASH" >> "$TFILE"
+if [[ -n $IDIR ]]; then
+	 printf "A copy of the infected file(s) can be located in %s\n" "$IDIR" >> "$TFILE"
+fi
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID=$LOGSID;" >> "$TFILE"
+if [[ -e /opt/artemis/cache/$HASH ]]; then
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID IN ($IDLIST);" >> "$TFILE"
+fi
+sendmail -vt < "$TFILE"
+rm -f "$TFILE"
+}
+
+file_integrity_chk() {         # checks and, if necessary, waits for a file to finish being written to disk
+local hash
+while [[ "$(sha256sum $1 | cut -d' ' -f1)" != "$hash" ]]; do
+        hash="$(sha256sum $1 | cut -d' ' -f1)"
+        sleep 0.1
+done
+}
+
+getSrcDst() {
+# Check the current log
+if [[ -e /opt/artemis/logs/artemis-files.log ]]; then
+        SOURCE=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+        DEST=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+fi
+
+# If the Source/Destination are not located there, check the most recently archived log file
+if [[ -z $SOURCE ]] || [[ -z $DEST ]] && [[ -f /opt/artemis/logs/artemis-files.log.1.gz ]]; then
+        TEMPID=$(date +%s%N)
+        file_integrity_chk /opt/artemis/logs/artemis-files.log.1.gz # Ensure that the file has been completely written to disk during log rotation before proceeding
+        cp /opt/artemis/logs/artemis-files.log.1.gz /tmp/artemis/$TEMPID.temp.gz
+        gzip -d /tmp/artemis/$TEMPID.temp.gz
+        SOURCE=$(grep $FILENAME /tmp/artemis/$TEMPID.temp | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+        DEST=$(grep $FILENAME /tmp/artemis/$TEMPID.temp | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+        rm /tmp/artemis/$TEMPID.temp
+fi
+
+# If the Source/Destination are not located in the archived log either, then wait for the data to be written to the current log
+if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
+        for (( i=0; i < 300; i++ )); do # For loop prevents infinite loops caused by log rotation
+                while ! [[ -e /opt/artemis/logs/artemis-files.log ]]; do       # Prevents missing file errors during log rotation
+                        sleep 0.1
+                done
+                SOURCE=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+                DEST=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+                if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
+                        sleep 1
+                else
+                        break
+                fi
+        done
+fi
+}
+
+
+filescan() {
+if [[ -e $1 ]] && [[ -s $1 ]]; then    # Check that file length is nonzero
+	TSTAMP=$(date)
+	file_integrity_chk $1
+	HASH=$(sha256sum "$1" | awk '{ print $1 }')
+	FILENAME=$(basename "$1")      # File name only
+	LogsEntry "$1" "$HASH" "$FILENAME"
+	HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$HASH' LIMIT 1;")
+	if grep -qw $HASH $LISTLOC/blacklist; then	# Compare the hash against the blacklist
+		getSrcDst
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4, Source='$SOURCE', Desintation='$DEST' WHERE EntryID=$LOGSID;"
+		if [[ -n $IDIR ]]; then
+                	mv "$DIR$FILENAME" "$IDIR$FILENAME"
+                	chmod 600 "$IDIR$FILENAME"
+		fi
+		sendAlert
+	elif grep -qw $HASH $LISTLOC/whitelist; then   # Compare the hash against the whitelist
+                getSrcDst
+                mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=3, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
+	elif [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
+		if [[ $(pgrep -c clamscan) -lt $MAXPROC ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Queue;") -eq 0  ]]; then
+			# Worker slots are available and the queue is empty. The file can be scanned immediately.
+			HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO Cache (Hash, Hits, TimeStamp) VALUES ('$HASH', 1, $(date +%s%N)); SELECT LAST_INSERT_ID();")
+			SCANNED=1
+			QUEUED=0
+			TLOG=$(mktemp -p /tmp/artemis/)  # Temporary file for log output
+			echo "$TSTAMP" > "$TLOG"
+			clamscan "$1" >> "$TLOG"
+			RESULT=$?
+			# Add the result of the scan to the Cache table
+			mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Result=$RESULT WHERE HashID=$HASHID;"
+			SCANTIME=$(grep Time "$TLOG" | awk '{print $2}')
+			getSrcDst
+			# Update the Logs table with the data from the scanned file
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Queued=$QUEUED, Result=$RESULT, ScanTime=$SCANTIME, \
+                        Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
+			# If a duplicate hash file exists add the result to the log entries contained in the file
+			if [[ -e /opt/artemis/cache/$HASH ]]; then
+				# Find number of LOGSIDs listed in the duplicate hash file
+                        	NUMIDS=$(wc -l < "/opt/artemis/cache/$HASH")
+                        	if  [[ $NUMIDS -gt 1 ]]; then
+                                	# Create an EntryID list to be used in queries
+                                	while read LINE; do
+                                        	if [[ -z $IDLIST ]]; then
+                                                	IDLIST="$LINE"
+                                        	else
+                                                	IDLIST+=",$LINE"
+                                        	fi
+                                	done </opt/artemis/cache/$HASH
+                                	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID IN ($IDLIST);"
+                        	else
+                                	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$(cat /opt/artemis/cache/$HASH);"
+                        	fi
+			fi
+			if [[ $RESULT -eq 1 ]]; then	# The file is infected
+				# If Artemis has been configured to move infected files then move the file to the appropriate directory
+				if [[ -n $IDIR ]]; then
+					if [[ -e /opt/artemis/cache/$HASH ]]; then
+						# Move each copy of the infected file to the appropriate directory
+						while read LINE; do
+							IFILE=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Logs WHERE EntryID=$$LINE;")
+							mv "$DIR$IFILE" "$IDIR$IFILE"
+							chmod 600 "$IDIR$IFILE"
+						done </opt/artemis/cache/$HASH
+					fi
+					mv "$1" "$IDIR$FILENAME"
+					chmod 600 "$IDIR$FILENAME"
+				fi
+				sendAlert
+			fi
+			if [[ -e /opt/artemis/cache/$HASH ]]; then
+				rm /opt/artemis/cache/$HASH
+			fi
+			printf "SHA256: %s\n\n" "$HASH" >> "$TLOG"
+			cat "$TLOG" >> /var/log/virus-scan.log
+			rm  "$TLOG"
+			# Cache table maintenance
+			# Remove any existing duplicate hashes
+			DUPHASH=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Hash FROM Cache GROUP BY Hash HAVING COUNT(*) > 1 LIMIT 1;")
+			while [[ -n $DUPHASH ]]; do
+				DEL=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$DUPHASH' LIMIT 1;")
+				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE HashID=$DEL;"
+				DUPHASH=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Hash FROM Cache GROUP BY Hash HAVING COUNT(*) > 1 LIMIT 1;")
+			done
+			# Remove entries that contain an error result.
+			mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Result=2;"
+			# Remove stale entries with a NULL result
+			# STALE=$(( $(date +%s%N) - 60000000000 ))
+			# If the cache is larger than the max cache size, delete hashes based on the greatest time interval since last hit
+			while [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Cache;") -gt $MAXHASH ]]; do
+				DEL=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache ORDER BY TimeStamp ASC LIMIT 1;")
+				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE HashID=$DEL;"
+			done
+		else	# Hash does not exist in the Cache table but no worker slots are available or the queue contains files
+			QUEUED=1
+			ENTRYTIME="$(date +%s).$(date +%N | head -c3)"
+			mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO Queue (FileName, TimeStamp, LogsID, EntryTime) VALUES ('$1', '$TSTAMP', $LOGSID, $ENTRYTIME);"
+			mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Queued=$QUEUED WHERE EntryID=$LOGSID;"
+		fi
+	else	# Hash is present in the Cache table
+		SCANNED=0
+		QUEUED=0
+		getSrcDst
+		RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
+		# Update the Logs and Cache table entries
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Queued=$QUEUED, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Hits=Hits+1, TimeStamp=$(date +%s%N) WHERE HashID=$HASHID;"
+		if [[ $RESULT == "NULL" ]]; then
+			echo $LOGSID >> /opt/artemis/cache/$HASH
+		else	# Result is present in the Cache table
+
+			# Update the result in the Logs table
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
+			if [[ $RESULT -eq 1 ]]; then
+				if [[ -n $IDIR ]]; then
+					mv "$DIR$FILENAME" "$IDIR$FILENAME"
+					chmod 600 "$IDIR$FILENAME"
+				fi
+				sendAlert
+			fi
+		fi
+	fi
+fi
+}
+
+exec 2> /var/log/artemis.err
+
+# Got r00t?
+if [[ $(id -u) -ne 0 ]]; then
+	echo "Root privilege required. Try using sudo"
+	exit 0
+fi
+
+# Check that the configuration file exists
+if [[ ! -f $CONF ]]; then
+	echo Artemis: Configuration file does nost exist!
+	rm /var/run/vS.pid
+	exit 1
+fi
+
+# Parse options
+while [[ $OPTIND -lt $# ]];do
+	parsOpts "$@" "h,help,v,f,w:,b:"
+	case $OPT in
+	h|help)
+		usage
+		exit 0
+		;;
+	v)
+		echo "Artemis Network Traffic Virus Monitor v$(grep VERSION /etc/artemis.conf | cut -d'=' -f2)"
+		exit 0
+		;;
+	f)
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE Cache;" > /dev/null
+		echo "Artemis: Cache has been flushed"
+		exit 0
+		;;
+	w)
+		echo "$OPTARG" >> /opt/artemis/whitelist
+		if [[ -e /opt/artemis/cache/whitelist ]]; then
+			echo "$OPTARG" >> /opt/artemis/cache/whitelist
+		fi
+		exit 0
+		;;
+	b)
+		echo "$OPTARG" >> /opt/artemis/blacklist
+		if [[ -e /opt/artemis/cache/blacklist ]]; then
+			echo "$OPTARG" >> /opt/artemis/cache/blacklist
+		fi
+		exit 0
+		;;
+	?)
+		usage
+		exit 1
+		;;
+	:)
+		echo "Invalid number of arguments for option $OPTARG. $OPTARG requires $NUMARGS argument(s)."
+		exit 1
+		;;
+	esac
+done
+shift "$OPTIND"
+
+# Get variables from artemis.conf
+EMAIL=$(grep EMAIL $CONF | cut -d'=' -f2)
+DIR=$(grep SDIR $CONF | cut -d'=' -f2)
+IDIR=$(grep IDIR $CONF | cut -d'=' -f2)
+MAXPROC=$(grep MAXPROC $CONF | cut -d'=' -f2)
+MAXHASH=$(grep MAXHASH $CONF | cut -d'=' -f2)
+
+# Check that all variables contain values
+if [[ -z "$DIR" ]] || [[ -z "$MAXPROC" ]] || [[ -z "$MAXHASH" ]] || [[ -z "$EMAIL" ]]; then
+	echo Artemis: Invalid configuration detected! Check that the conf file has been properly configured.
+	exit 1
+fi
+
+# Create the infected file directory if it does not exist
+if [[ -n $IDIR ]]; then
+	if ! [[ -d $IDIR ]]; then
+		mkdir -pm 600 "$IDIR"
+	fi
+fi
+
+# Create a temporary file directory if it does not exist
+if ! [[ -d /tmp/artemis/ ]]; then
+	mkdir -m 660 /tmp/artemis/
+fi
+
+# Mount the cache directory
+if ! [[ -d /opt/artemis/cache/ ]]; then
+	mkdir -p /opt/artemis/cache/
+fi
+if  ! mount | grep -q /opt/artemis/cache ; then
+	mount -t tmpfs -o size=2m tmpfs /opt/artemis/cache/
+	chmod 600 /opt/artemis/cache/
+fi
+
+# Load the whitelist and blacklist into memory if space permits
+if cp /opt/artemis/whitelist /opt/artemis/cache/ && cp /opt/artemis/blacklist /opt/artemis/cache/; then
+	chmod 600 /opt/artemis/cache/whitelist /opt/artemis/cache/blacklist
+	LISTLOC="/opt/artemis/cache"
+else
+	rm /opt/artemis/cache/*list
+	LISTLOC="/opt/artemis"
+fi
+
+# Start the Orion LB scanner
+/usr/bin/orion &
+
+inotifywait -q -m -e create,moved_to --format '%w%f' "$DIR" | while read FILE
+do
+	filescan "$FILE" &
+done
+
+# Shutdown
+pkill -9 orion
+pkill -9 clamscan
+
+# Cleanup
+umount /opt/artemis/cache/
+rm -rf /opt/artemis/cache/
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Logs WHERE Result IS NULL;"
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Result IS NULL;"
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE Queue;"
+if [[ -d /tmp/artemis/ ]]; then
+	rm -rf /tmp/artemis/
+fi
+
+pkill -x -9 artemis
+exit

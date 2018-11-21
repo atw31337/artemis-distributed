@@ -28,7 +28,18 @@ if ! dpkg --get-selections | grep -v deinstall | grep -q mlocate; then
         apt-get -y install mlocate > /dev/null 2>&1
 fi
 
+# Verify that syslog-ng is installed and configure it to send bro files logs. If it is not installed, install it.
+if ! dpkg --get-selections | grep -v deinstall | grep -q syslog-ng; then
+	apt-get -y install syslog-ng-core > /dev/null 2>&1
+fi
 
+cat << EOF >> /etc/syslog-ng/syslog-ng.conf
+
+source s_bro_files { file("/nsm/bro/logs/current/files.log" flags(no-parse) program_override("bro_files")); };
+destination remote { udp("$(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)" port(514)); };
+log { source(s_bro_files); destination(remote); };
+EOF
+service syslog-ng restart
 
 # Search for extract.bro
 updatedb
@@ -74,3 +85,5 @@ if [[ $CLEAN -eq 1 ]]; then
 fi
 rm -r /tmp/artemis/
 
+echo "Starting Artemis forwarder..."
+service artemis_forwarder start

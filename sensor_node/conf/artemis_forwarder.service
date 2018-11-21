@@ -1,7 +1,7 @@
 # Artemis Fowarder systemd service unit
 
 [Unit]
-Description=artemis daemon
+Description=artemis forwarder daemon
 
 [Service]
 Type=oneshot

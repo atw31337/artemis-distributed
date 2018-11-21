@@ -1,0 +1,59 @@
+#!/bin/bash
+# Title: artemis-logRepair
+# Description: Scans all log files for source and destination information that is missing from the Logs table.
+# Version: 1.00.00
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
+
+exec 2>/var/log/artemis.err
+
+# It it unlikely that source and/or destination information will be retrieved if the log was unable to be repaired over the laster 24 hours; therefore,
+# the Source and Destination fields for these entries will be set to null. This will prevent logRepair from continuing its attempts at repairing these entries.
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Source=NULL, Destination=NULL WHERE (DateTime < (SELECT SUBTIME (SYSDATE(),'1 0:0:0'))) \
+AND (Source='' OR Destination='');"
+
+
+# Check if any entries are missing source or destination info
+ENTRIES=($(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT EntryID FROM Logs WHERE (Source='' OR Destination='');"))
+if [[ -n ${ENTRIES[@]} ]]; then
+	# Copy all files.log files from /nsm/bro/logs/
+	for i in $(ls /nsm/bro/logs/ | grep -v stats); do
+		if ls /nsm/bro/logs/"$i"/ | grep -q files; then
+			# Create a unique log directory for each log directory in the /nsm/bro/logs/
+			if ! [[ -d /tmp/artemis/logRepair/$i ]]; then
+				mkdir -pm 660 /tmp/artemis/logRepair/"$i"/
+			fi
+			# Copy the files logs from the directory to the tmp directory
+			cp /nsm/bro/logs/"$i"/files.* /tmp/artemis/logRepair/"$i"/
+			# Unzip the log files
+			gzip -d /tmp/artemis/logRepair/"$i"/files.* 2>/dev/null
+		fi
+	done
+	# Search the log files for the source and destination of each EntryID
+	for i in "${ENTRIES[@]}"; do
+		FILENAME=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Logs WHERE EntryID=$i;")
+		SOURCE=$(grep "$FILENAME" /tmp/artemis/logRepair/*/files.* | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+		DESTINATION=$(grep "$FILENAME" /tmp/artemis/logRepair/*/files.* | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+		if [[ -n $SOURCE ]]; then
+			mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Source='$SOURCE' WHERE EntryID=$i;"
+		fi
+		if [[ -n $DESTINATION ]]; then
+			mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Destination='$DESTINATION' WHERE EntryID=$i;"
+		fi
+	done
+fi
+rm -rf /tmp/artemis/logRepair/
+exit

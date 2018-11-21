@@ -1,0 +1,16 @@
+# Artemis systemd service unit
+
+[Unit]
+Description=artemis daemon
+After=mysql.service 
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/artemisInit start
+RemainAfterExit=true
+ExecReload=/usr/sbin/artemisInit restart
+ExecStop=/usr/sbin/artemisInit stop
+
+[Install]
+WantedBy=multi-user.target
+

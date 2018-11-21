@@ -1,0 +1,156 @@
+#!/bin/bash
+# Title: arteStat
+# Description: arteStat is a front-end interface that enables users to easily create custom reports based on Artemis' statistical data.
+# Version: 1.00.00
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
+
+source /opt/artemis/parsOpts.sh
+
+usage ()
+{
+cat <<EOF
+
+arteStat - Artemis statistical report generator
+Usage: arteStat [OPTION]...
+
+	Report Period Options:
+		-D <YYYY-MM-HH>		Specific date
+		-M <YYYY-MM>		Specific month
+		-Y <YYYY>		Specific year
+		-H <HH>			Specific hour of current day
+		-d <n>			Last n number of days
+		-w <n>			Last n number of weeks
+		-m <n>			Last n number of months
+		-y <n>			Last n number of years
+		-r <n>			Last n number of hours
+		-i <n>			Last n number of minutes
+		-R <Start> <End>	Specific start and end Date/Time in YYYY-MM-DD HH:MM:SS format
+
+EOF
+}
+
+# Got r00t?
+if [[ $(id -u) -ne 0 ]]; then
+	echo "Root privilege required. Try using sudo"
+	exit 0
+fi
+
+# Set default time period (Previous 24 hours)
+END=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SYSDATE();")
+START=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBDATE('$END', 1);")
+
+while [[ $OPTIND -lt $# ]]; do
+	parsOpts "$@" "h,help,D:,M:,Y:,H:,d:,w:,m:,y:,r:,i:,R:4"
+	case $OPT in
+	h|help)
+		usage
+		exit 0
+		;;
+	D)
+		START="$OPTARG 00:00:01"
+		END="$OPTARG 23:59:59"
+		;;
+	M)
+		START="$OPTARG-01 00:00:01"
+		END="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT DATE_ADD('$START', INTERVAL 1 MONTH);")"
+		;;
+	Y)
+		START="$OPTARG-01-01 00:00:01"
+		END="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT DATE_ADD('$START', INTERVAL 1 YEAR);")"
+		;;
+	H)
+		START="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT CURDATE();") $OPTARG:00:01"
+		END="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT CURDATE();") $OPTARG:59:59"
+		;;
+	d)
+		START="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBDATE('$END', $OPTARG);")"
+		;;
+	w)
+		START="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT DATE_SUB('$END', INTERVAL $OPTARG WEEK);")"
+		;;
+	m)
+		START="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT DATE_SUB('$END', INTERVAL $OPTARG MONTH);")"
+		;;
+	y)
+		START="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT DATE_SUB('$END', INTERVAL $OPTARG YEAR);")"
+		;;
+	r)
+		START="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT DATE_SUB('$END', INTERVAL $OPTARG HOUR);")"
+		;;
+	i)
+		START="$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT DATE_SUB('$END', INTERVAL $OPTARG MINUTE);")"
+		;;
+	R)
+		START=$(echo "$OPTARG" | awk '{print $1" "$2}')
+               	END=$(echo "$OPTARG" | awk '{print $3" "$4}')
+               	;;
+	\?)
+		echo "Invalid option: $OPTARG"
+		exit 1
+		;;
+	:)
+		echo "Invalid number of arguments for option $OPTARG. $OPTARG requires $NUMARGS argument(s)."
+		exit 1
+		;;
+	esac
+done
+
+
+# Report
+echo
+echo '################################# Artemis Statistical Report #################################'
+echo
+echo "Report period: $START - $END"
+echo
+TOTAL=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END');")
+echo "Number of Files Processed: $TOTAL"
+echo
+echo "Average File Size: $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END');") B"
+echo
+SCANNED=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Scanned=1;")
+echo "Number of Files Scanned: $SCANNED"
+echo
+echo "File Scan Percentage: $(echo "scale=2; 100 * $SCANNED / $TOTAL" | bc)%"
+echo
+AST=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(ScanTime), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND ScanTime IS NOT NULL;")
+if [[ $AST == 'NULL' ]]; then
+	AST=0
+fi
+echo "Average Scan Time: $AST s"
+echo
+echo "Average Size of Scanned Files: $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Scanned=1;") B"
+echo
+QUEUED=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Queued=1;")
+echo "Number of Files Queued: $QUEUED"
+echo
+echo "Percentage of Files Queued: $(echo "scale=2; 100 * $QUEUED / $TOTAL" | bc)%"
+echo
+echo "Percentage of Scanned Files Queued: $(echo "scale=2; 100 * $QUEUED / $SCANNED" | bc)%"
+echo
+AQT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(QTime), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND QTime IS NOT NULL;")
+if [[ $AQT == 'NULL' ]]; then
+	AQT=0
+fi
+echo "Average Queue Time: $AQT s"
+echo
+echo "Total Files by File Type:"
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileType, COUNT(*) AS Count FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') GROUP BY FileType ORDER BY Count DESC;"
+echo
+echo "File Type Percentages:"
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileType, CONCAT(ROUND(( COUNT(*)/(SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END')\
+) * 100), 2), '%') AS Percentage from Logs WHERE (DateTime BETWEEN '$START' AND '$END') GROUP BY FileType ORDER BY COUNT(*) DESC;"
+echo
