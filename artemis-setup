@@ -78,6 +78,92 @@ EOF
 	done
 }
 
+uninstall () {
+
+# Check for a running instance of Artemis
+if [[ -n $(pgrep -x artemis) ]]; then
+	echo "Shuttind down Artemis..."
+	service artemis stop
+fi
+read -p 'Would you like to uninstall bc? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing bc..."
+	apt-get -y purge bc > /dev/null 2>&1
+else
+	echo "bc will not be uninstalled."
+fi
+read -p 'Would you like to uninstall postfix? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing postfix..."
+        service postfix stop
+	apt-get -y purge postfix > /dev/null 2>&1
+else
+	echo "postfix will not be uninstalled."
+fi
+read -p 'Would you like to uninstall inotify-tools? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing inotify-tools..."
+        apt-get -y purge inotify-tools > /dev/null 2>&1
+else
+	echo "inotify-tools will not be uninstalled."
+fi
+read -p 'Would you like to uninstall syslog-ng? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing syslog-ng..."
+	service syslog-ng stop
+	apt-get -y purge syslog-ng-core > /dev/null 2>&1
+else
+	echo "syslog-ng will not be uninstalled."
+	sed -i '/destination artemis { file("/opt/artemis/logs/artemis-files.log"); };/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/log { source(net); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf
+	service syslog-ng restart
+fi
+read -p 'Would you like to uninstall clamav? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing clamav..."
+	apt-get -y purge "$(dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep clamav)" > /dev/null 2>&1
+else
+	echo "clamav will not be uninstalled."
+fi
+read -p 'Would you like to remove the Artemis database? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing Artemis database..."
+	mysql --defaults-file=/etc/mysql/debian.cnf -e "DROP DATABASE artemis;"
+	read -p 'Would you like to uninstall mysql? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+	if [[ $ANSWER == 'y' ]]; then
+		echo "Removing mysql..."
+		service mysql stop > /dev/null 2>&1
+		apt-get --yess purge mysql* > /dev/null 2>&1
+		apt-get --yes autoremove --purge > /dev/null 2>&1
+		apt-get autoclean > /dev/null 2>&1
+		deluser --remove-home mysql > /dev/null 2>&1
+		delgroup mysql > /dev/null 2>&1
+	else
+		echo "mysql will not be uninstalled."
+	fi
+else
+	echo "The Artemis database will not be removed."
+fi
+read -p 'Would you like to remove all Artemis log files? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	LOG=1
+else
+	echo "Log files will be retained."
+fi
+echo "Removing files..."
+rm /etc/artemis.conf /usr/bin/artemis /usr/bin/orion /usr/bin/arteStat /usr/bin/tracks /usr/bin/artemis-brolog-cleanup
+rm /usr/bin/artemis-logfile-cleanup /usr/bin/artemis-logstable-cleanup /usr/bin/artemis-logRepair
+systemctl stop artemis && systemctl disable artemis > /dev/null 2>&1
+rm /lib/systemd/system/artemis.service /usr/sbin/artemisInit
+systemctl daemon-reload && systemctl reset-failed > /dev/null 2>&1
+rm /etc/cron.d/artemis-brolog-cron /etc/cron.d/artemis-logfile-cron /etc/cron.d/artemis-logstable-cron
+rm /etc/cron.d/artemis-logRepair-cron
+rm -rf /opt/artemis/
+if [[ $LOG -eq 1 ]]; then
+	rm /var/log/artemis.err /var/log/virus-scan.log* > /dev/null 2>&1
+fi
+echo "Artemis has been successfully uninstalled"
+}
 
 ## Main
 
@@ -105,7 +191,19 @@ while getopts ":huf:" OPT; do
                 fi
                 ;;
         u)
-                uninstall
+                if [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
+			uninstall
+		elif [[ -e /opt/artemis/artemis-setup ]] && [[ $(grep Version /opt/artemis/artemis-setup | head -n1 | cut -d' ' -f3) \
+		== $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then
+			/opt/artemis/artemis-setup -u
+		else
+			read -p "Uninstaller version mismatch. Would you like to proceed with uninstallation anyway? [y/N]: " SELECT
+			if [[ $SELECT == 'y' ]] || [[ $SELECT == 'Y' ]]; then
+				uninstall
+			else
+				echo "Uninstallion aborted"
+			fi
+		fi
                 exit 0
                 ;;
         \?)
@@ -303,12 +401,11 @@ if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -qx sys
 fi
 
 # Configure syslog-ng to receive syslogs from remote hosts
-ufw allow from any to any port 514 proto udp
 cat <<EOF >> /etc/syslog-ng/syslog-ng.conf
 
 source net { udp(); };
-destination remote { file("/opt/artemis/logs/artemis-files.log"); };
-log { source(net); destination(remote); };
+destination artemis { file("/opt/artemis/logs/artemis-files.log"); };
+log { source(net); destination(artemis); };
 EOF
 service syslog-ng restart
 
@@ -353,8 +450,7 @@ cp ./scan_node/conf/artemis-logRepair-cron /etc/cron.d/artemis-logRepair-cron
 cp ./scan_node/conf/artemis.service /lib/systemd/system/artemis.service
 
 # Reload systemctl
-systemctl daemon-reload > /dev/null 2>&1
-systemctl enable artemis > /dev/null 2>&1
+systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
 
 # Create whitelist file if necessary
 if ! [[ -e /opt/artemis/whitelist ]]; then
@@ -415,16 +511,12 @@ for i in "${SENSORS[@]}";do
 	sftp -qi /root/.ssh/artemis/ "$USERNAME"@"$i" <<EOF > /dev/null
 mkdir /tmp/artemis/
 cd /tmp/artemis/
-put ./sensor_node/conf/extract.bro
-put ./sensor_node/scripts/sensor-setup
-cd /usr/bin/
-put ./sensor_node/scripts/artemis_forwarder
-cd /etc/
+put ./sensor_node/extract.bro
+put ./sensor_node/sensor-setup
+put ./sensor_node/artemis-forwarder
 put /tmp/artemis.conf
-cd /lib/systemd/system/
-put ./sensor_node/conf/artemis_fowarder.service
-cd /usr/sbin/
-put ./sensor_node/scripts/artemisFInit
+put ./sensor_node/artemis-forwarder.service
+put ./sensor_node/artemisFInit
 EOF
 	ssh -qti /root/.ssh/artemis "$USERNAME"@"$i" "sudo /tmp/artemis/sensor-setup $SDIR"
 

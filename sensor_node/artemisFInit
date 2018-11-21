@@ -19,7 +19,7 @@
 
 case "$1" in
 start)
-        /usr/bin/artemis_forwarder & 2>>/var/log/artemis.err
+        /usr/bin/artemis-forwarder & 2>>/var/log/artemis.err
         ;;
 stop)
         pkill -9 "inotify"
