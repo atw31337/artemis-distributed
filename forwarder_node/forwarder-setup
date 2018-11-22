@@ -1,0 +1,277 @@
+#!/bin/bash
+# Title: forwarder-setup
+# Description: This script will automate the tasks required to install artemis forwarder nodes in a distributed deployment architecture
+# Version: 1.00
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Andrew Withers (atw31337@gmail.com)
+
+VERSION=1.00
+
+usage ()
+{
+cat <<EOF
+
+Artemis NVM Forwarder Installer
+Usage: $0 [OPTION]
+
+        Options:
+
+                -h              This message
+                -u              Uninstall Artemis
+
+EOF
+}
+
+genConf () {
+
+# Ensure that the source directory ends with "/"
+if [[ $(echo "$DIR" | tail -c -1) != "/" ]]; then
+	DIR+="/"
+fi
+
+cat << EOF
+###############################################################
+#     Artemis Network Virus Monitor configuration file        #
+###############################################################
+
+# Do not modify version data
+VERSION=$VERSION
+
+# Scanner node (FQDN)
+SCANNER=$SCANNER
+
+# Source directory. Directory to be monitored by Artemis. All files added to this directory will be inspected by Artemis.
+SDIR=$SDIR
+
+EOF
+}
+
+uninstall () {
+
+# Checking for a running instance of artemis-forwarder
+if [[ -n $(pgrep -x artemis-forwarder) ]]; then
+	echo "Shuttind down Artemis-forwarder..."
+	service artemis-forwarder stop
+fi
+
+read -p 'Would you like to uninstall syslog-ng? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing syslog-ng..."
+	service syslog-ng stop
+	apt-get -y purge syslog-ng-core > /dev/null 2>&1
+else
+	echo "syslog-ng will not be uninstalled."
+	sed -i "/destination artemis { udp("$(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)" port(514)); };/d" /etc/syslog-ng/syslog-ng.conf
+	sed -i '/log { source(s_bro_files); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf 
+fi
+read -p 'Would you like uninstall inotify-tools? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing inotify-tools..."
+	apt-get -y purge inotify-tools > /dev/null 2>&1
+else
+	echo "inotify-tools will not be uninstalled."
+fi
+
+echo "Removing files..."
+rm /usr/bin/artemis-forwarder /usr/sbin/artemisFInit /lib/systemd/system/artemis-forwarder.service /var/log/artemis.err
+rm -r /opt/artemis/
+
+echo "Artemis-forwarder has been successfully uninstalled"
+}
+
+## Main
+
+# Got r00t?
+if [[ $(id -u) -ne 0 ]]; then
+        echo "This script requires root privilege. Try using sudo"
+        exit
+fi
+
+CLEAN=0 # Determines whether or not mlocate needs to be removed after installation
+
+while getopts ":hu" OPT; do
+        case $OPT in
+        h)
+                usage
+                exit 0
+                ;;
+	u)
+		if [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
+			uninstall
+		elif [[ -e /opt/artemis/forwarder-setup && [[ $(grep Version /opt/artemis/forwarder-setup | head -n1 | cut -d' ' -f3) \
+		== $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then
+			/opt/artemis/forwarder-setup -u
+		else
+			read -p "Uninstaller version mismatch. Would you like to proceed with uninstallation anyway? [y/N]: " ANSWER && ANSWER=${ANSWER,,}
+			if [[ $ANSWER == 'y' ]]; then
+				uninstall
+			else
+				echo "Installation aborted"
+				exit 1
+			fi
+		fi
+		exit 0
+		;;
+	\?)
+		echo "Invalid option: -$OPTARG"
+		usage
+		exit 1
+		;;
+	esac
+done
+
+apt-get update -qq
+if ! dpkg --get-selections | grep -v deinstall | grep -wq bc; then
+        apt-get -y install bc > /dev/null 2>&1
+fi
+
+# Check for previous version
+if [[ -e /opt/artemis/forwarder-setup ]]; then
+	# Verify that the old setup script version corresponds to the version of Artemis forwarder that is currently installed and that
+	# it is less than the version that is about to be installed
+	if [[ $(grep Version /opt/artemis/forwarder-setup | head -n1 | cut -d' ' -f3) == $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]] && \
+	(( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) < $VERSION" | bc -l) )); then
+		echo "A previous version of Artemis forwarder has been detected."
+		echo "Would you like to remove it prior to proceeding with the installation?"
+		echo "Note: Prompts will allow you to choose which components should be removed."
+		read -p "[Y/n]: " ANSWER && ANSWER=${ANSWER,,}
+		if [[ $ANSWER == 'y' ]] || [[ -z $ANSWER ]]; then
+			/opt/artemis/forwarder-setup -u
+		fi
+	elif [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
+		read -p "This version of Artemis is already installed. Would you like to reinstall? [y/N]: " ANSWER && ANSWER=${ANSWER,,}
+		if [[ $ANSWER != 'y' ]]; then
+			exit 0
+		fi
+	else
+		read -p "A newer version of Artemis forwarder is already installed. Would you like to remove it and install this verion [y/N]: " ANSWER && ANSWER=${ANSWER,,}
+		if [[ $ANSWER == 'y' ]]; then
+			/opt/artemis/forwarder-setup -u
+		else
+			exit 0
+		fi
+	fi
+fi
+
+read -p 'Enter the path of the directory to be monitored by Artemis [/nsm/bro/extracted/]: ' SDIR
+	if [[ -z $SDIR ]]; then
+		SDIR="/nsm/bro/extracted/"
+	fi
+while [[ -z $SCANNER ]]; do
+	read -p 'Enter the FQDN of the scanner node: ' SCANNER
+	if [[ -z $SCANNER ]]; then
+		echo "Invalid response. Try again."
+	fi
+done
+
+
+# Check for a running instanace of Artemis forwarder
+if [[ -n $(pgrep -x artemis-forwarder) ]]; then
+        echo "Shutting down Artemis forwarder..."
+        service artemis-fowarder stop
+fi
+
+echo "Installing Artemis forwarder..."
+echo "Checking prerequisites..."
+
+# Determine if mlocate needs to be installed
+if ! dpkg --get-selections | grep -v deinstall | grep -q mlocate; then
+        CLEAN=1
+        apt-get -y install mlocate > /dev/null 2>&1
+fi
+
+# Verify that syslog-ng is installed and configure it to send bro files-logs. If it is not installed, install it.
+if ! dpkg --get-selections | grep -v deinstall | grep -q syslog-ng; then
+	echo "Installing syslog-ng..."
+	apt-get -y install syslog-ng-core > /dev/null 2>&1
+fi
+
+cat << EOF >> /etc/syslog-ng/syslog-ng.conf
+
+source s_bro_files { file("/nsm/bro/logs/current/files.log" flags(no-parse) program_override("bro_files")); };
+destination artemis { udp("$(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)" port(514)); };
+log { source(s_bro_files); destination(artemis); };
+EOF
+service syslog-ng restart
+
+# Install inotify-tools if necessary
+if ! dpkg --get-selections | grep -v deinstall | grep -q inotify-tools; then
+        echo "Installing inotify-tools..."
+        apt-get -y install inotify-tools > /dev/null 2>&1
+fi
+
+# Search for extract.bro
+updatedb
+case $(locate extract.bro | grep -vc /tmp/artemis/extract.bro) in
+        0)
+                echo "Unable to locate extract.bro file. Verify that Bro is installed and properly configured to extract files."
+                echo "Aborting installation..."
+                if [[ $CLEAN -eq 1 ]]; then
+                        apt-get -y purge mlocate > /dev/null 2>&1
+                fi
+                exit 1
+                ;;
+        1)
+                EXTLOC=$(locate extract.bro | grep -v /tmp/artemis/extract.bro)
+                ;;
+        *)
+                LIST=($(locate extract.bro | grep -v /tmp/artemis/extract.bro))
+                printf "Mulitple instances of extract.bro were found: \n"
+                for ((i=0; i<"${#LIST[@]}"; i++)); do
+                        echo "$((i+1))) ${LIST[$i]}"
+                done
+                read -p "Please select the correct location [1-$i]: " SELECT
+                while [[ $SELECT -lt 1 ]] || [[ $SELECT -gt $i ]] || ! [[ $SELECT =~ ^[1-9]+$ ]]; do
+                        echo "Invalid selection."
+                        read -p "Please select the correct location [1-${#LIST[@]}]: " SELECT
+                done
+                EXTLOC="${LIST[$((SELECT-1))]}"
+                ;;
+esac
+
+# Create /etc/artemis.conf
+echo "Generating /etc/artemis.conf..."
+genConf > /etc/artemis.conf
+
+# Copy files
+cp ./artemis-forwarder /usr/bin/
+cp ./artemis-forwarder.service /lib/systemd/system/
+cp ./artemisFInit /usr/sbin/
+cp ./extract.bro "$EXTLOC"
+mkdir -p /opt/artemis/
+cp ./forwarder-setup /opt/artemis/
+
+# Reload systemctl
+systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
+
+# Generate ssh key pair
+echo "Generating ssh key pair..."
+ssh-keygen -t rsa -N "" -f /root/.ssh/artemis > /dev/null 2>&1
+
+echo "Enter the username of the account that should be used to connect to the scanner node."
+read -p "The account must have sudo privileges during installation: " USERNAME
+ssh-copy-id -i /root/.ssh/artemis -o StrictHostKeyChecking=no "$USERNAME"@"$SCANNER"
+ssh -qti /root/.ssh/artemis "$USERNAME"@"$SCANNER" 'sudo usermod -a -G artemis $(logname)'
+printf"\nLOG=%s" "$USERNAME" >> /etc/artemis.conf
+
+# Remove mlocate if it was not previously installed
+if [[ $CLEAN -eq 1 ]]; then
+        echo "Cleaning up..."
+        apt-get -y purge mlocate > /dev/null 2>&1
+fi
+
+echo "Starting Artemis forwarder..."
+service artemis-forwarder start

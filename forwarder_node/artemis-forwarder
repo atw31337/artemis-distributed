@@ -1,0 +1,60 @@
+#!/bin/bash
+# Title: artemis_forwarder
+# Version: 1.00.00
+#
+#
+#   ________  ________  _________  _______   _____ ______   ___  ________
+#  |\   __  \|\   __  \|\___   ___\\  ___ \ |\   _ \  _   \|\  \|\   ____\
+#  \ \  \|\  \ \  \|\  \|___ \  \_\ \   __/|\ \  \\\__\ \  \ \  \ \  \___|_
+#   \ \   __  \ \   _  _\   \ \  \ \ \  \_|/_\ \  \\|__| \  \ \  \ \_____  \
+#    \ \  \ \  \ \  \\  \|   \ \  \ \ \  \_|\ \ \  \    \ \  \ \  \|____|\  \
+#     \ \__\ \__\ \__\\ _\    \ \__\ \ \_______\ \__\    \ \__\ \__\____\_\  \
+#      \|__|\|__|\|__|\|__|    \|__|  \|_______|\|__|     \|__|\|__|\_________\
+#                                                                  \|_________|
+#
+#
+#
+# This program is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with this program.
+# If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
+
+DIR=$(grep SDIR /etc/artemis.conf | cut -d'=' -f2)
+SCANNER=$(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)
+USERNAME=$(grep LOG /etc/artemis.conf | cut -d'=' -f2)
+
+file_integrity_chk() {         # checks and, if necessary, waits for a file to finish being written to disk
+local hash
+while [[ "$(sha256sum $1 | cut -d' ' -f1)" != "$hash" ]]; do
+        hash="$(sha256sum $1 | cut -d' ' -f1)"
+        sleep 0.1
+done
+}
+
+forward() {
+file_integrity_chk $1
+sftp -i /root/.ssh/artemis "$USERNAME"@"$SCANNER":/opt/artemis/extracted/ <<< $"put $1" > /dev/null
+}
+
+exec 2> /var/log/artemis.err
+
+# Got r00t?
+if [[ $(id -u) -ne 0 ]]; then
+        echo "Root privilege required. Try using sudo"
+        exit 0
+fi
+
+inotifywait -q -m -e create,moved_to --format '%w%f' "$DIR" | while read FILE
+do
+        forward "$FILE" &
+done
+
+exit

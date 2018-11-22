@@ -1,0 +1,435 @@
+#!/bin/bash
+# Title: artemis-setup
+# Description: Installation script for Artemis Network Traffic Virus Monitor
+# Version: 1.00
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Andrew Withers (atw31337@gmail.com)
+
+VERSION=1.00
+
+usage ()
+{
+cat <<EOF
+
+Artemis NVM Installer
+Usage: $0 [OPTION] <FILE>
+
+        Options:
+
+                -h              This message
+                -f <file>       Install using answer file <file>
+                -u              Uninstall Artemis
+
+EOF
+}
+
+genConf ()
+{
+        # Ensure that the infection directory variable ends with "/"
+        if [[ -n $IDIR ]]; then
+                if [[ $(echo -n "$IDIR" | tail -c -1) != "/" ]]; then
+                        IDIR+="/"
+                fi
+        fi
+
+cat << EOF
+###############################################################
+#     Artemis Network Virus Monitor configuration file        #
+###############################################################
+
+# Do not modify version data
+VERSION=$VERSION
+
+# Maximum number of concurrent scan processes
+MAXPROC=$MAXPROC
+
+# Maximum number of hashes to store in the hash cache file
+MAXHASH=$MAXHASH
+
+# Infected files directory path. Files that are determined to be infected are moved to this directory.
+IDIR=$IDIR
+
+# Recipient email address(es) for malware alerts. Multiple addresses should be separated with commas.
+EMAIL=$EMAIL
+
+# Source directory. Directory to be monitored by Artemis. All files added to this directory will be inspected by Artemis.
+SDIR=/opt/artemis/extracted/
+
+# Number of days worth of log data that will be maintained.
+LOGSDATA=$LOGSDATA
+}
+
+uninstall () {
+
+# Check for a running instance of Artemis
+if [[ -n $(pgrep -x artemis) ]]; then
+	echo "Shuttind down Artemis..."
+	service artemis stop
+fi
+read -p 'Would you like to uninstall bc? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing bc..."
+	apt-get -y  purge bc > /dev/null 2>&1
+else
+	echo "bc will not be uninstalled."
+fi
+read -p 'Would you like to uninstall postfix? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing postfix..."
+        service postfix stop
+	apt-get -y purge postfix > /dev/null 2>&1
+else
+	echo "postfix will not be uninstalled."
+fi
+read -p 'Would you like to uninstall inotify-tools? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing inotify-tools..."
+        apt-get -y purge inotify-tools > /dev/null 2>&1
+else
+	echo "inotify-tools will not be uninstalled."
+fi
+read -p 'Would you like to uninstall syslog-ng? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing syslog-ng..."
+	service syslog-ng stop
+	apt-get -y purge syslog-ng-core > /dev/null 2>&1
+else
+	echo "syslog-ng will not be uninstalled."
+	sed -i '/destination artemis { file("/opt/artemis/logs/artemis-files.log"); };/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/log { source(net); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf
+	service syslog-ng restart
+fi
+read -p 'Would you like to uninstall clamav? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing clamav..."
+	apt-get -y purge "$(dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep clamav)" > /dev/null 2>&1
+else
+	echo "clamav will not be uninstalled."
+fi
+read -p 'Would you like to remove the Artemis database? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing Artemis database..."
+	mysql --defaults-file=/etc/mysql/debian.cnf -e "DROP DATABASE artemis;"
+	read -p 'Would you like to uninstall mysql? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+	if [[ $ANSWER == 'y' ]]; then
+		echo "Removing mysql..."
+		service mysql stop > /dev/null 2>&1
+		apt-get --yess purge mysql* > /dev/null 2>&1
+		apt-get --yes autoremove --purge > /dev/null 2>&1
+		apt-get autoclean > /dev/null 2>&1
+		deluser --remove-home mysql > /dev/null 2>&1
+		delgroup mysql > /dev/null 2>&1
+	else
+		echo "mysql will not be uninstalled."
+	fi
+else
+	echo "The Artemis database will not be removed."
+fi
+read -p 'Would you like to remove all Artemis log files? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	LOG=1
+else
+	echo "Log files will be retained."
+fi
+echo "Removing files..."
+rm /etc/artemis.conf /usr/bin/artemis /usr/bin/orion /usr/bin/arteStat /usr/bin/tracks /usr/bin/artemis-brolog-cleanup
+rm /usr/bin/artemis-logfile-cleanup /usr/bin/artemis-logstable-cleanup /usr/bin/artemis-logRepair
+systemctl stop artemis && systemctl disable artemis > /dev/null 2>&1
+rm /lib/systemd/system/artemis.service /usr/sbin/artemisInit
+systemctl daemon-reload && systemctl reset-failed > /dev/null 2>&1
+rm /etc/cron.d/artemis-brolog-cron /etc/cron.d/artemis-logfile-cron /etc/cron.d/artemis-logstable-cron
+rm /etc/cron.d/artemis-logRepair-cron
+rm -rf /opt/artemis/
+if [[ $LOG -eq 1 ]]; then
+	rm /var/log/artemis.err /var/log/virus-scan.log* > /dev/null 2>&1
+fi
+echo "Artemis has been successfully uninstalled"
+}
+
+## Main
+
+# Got r00t?
+if [[ $(id -u) -ne 0 ]]; then
+        echo "This script requires root privilege. Try using sudo"
+        exit
+fi
+
+MODE=0 # 0 is Interactive Mode and 1 is Automated Mode
+CLEAN=0 # Determines whether or not mlocate needs to be removed after installation
+
+while getopts ":huf:" OPT; do
+        case $OPT in
+        h)
+                usage
+                exit 0
+                ;;
+        f)
+                MODE=1
+                AFILE="$OPTARG" # Specifies the configuration file to be used in Automated Mode
+                if ! [[ -f $AFILE ]]; then
+                        echo "$AFILE does not exist!"
+                        exit 1
+                fi
+                ;;
+        u)
+                if [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
+			uninstall
+		elif [[ -e /opt/artemis/artemis-setup ]] && [[ $(grep Version /opt/artemis/artemis-setup | head -n1 | cut -d' ' -f3) \
+		== $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then
+			/opt/artemis/artemis-setup -u
+		else
+			read -p "Uninstaller version mismatch. Would you like to proceed with uninstallation anyway? [y/N]: " SELECT
+			if [[ $SELECT == 'y' ]] || [[ $SELECT == 'Y' ]]; then
+				uninstall
+			else
+				echo "Uninstallion aborted"
+			fi
+		fi
+                exit 0
+                ;;
+        \?)
+                echo "Invalid option: -$OPTARG"
+                usage
+                exit 1
+                ;;
+        :)
+                echo "Option -$OPTARG requires an argument."
+                usage
+                exit 1
+                ;;
+        esac
+done
+
+apt-get update -qq
+if ! dpkg --get-selections | grep -v deinstall | grep -wq bc; then
+        apt-get -y install bc > /dev/null 2>&1
+fi
+
+# Check for previous version
+if [[ -e /opt/artemis/artemis-setup ]]; then
+        # Verify that the old setup script version corresponds to the version of Artemis that is currently installed and that
+        # it is less than the version that is about to be installed
+        if [[ $(grep Version /opt/artemis/artemis-setup | head -n1 | cut -d' ' -f3) == $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]] && \
+        (( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) < $VERSION" | bc -l) )); then
+                echo "A previous version of Artemis has been detected."
+                echo "Would you like to remove it prior to proceeding with the installation?"
+                echo "Note: Prompts will allow you to choose which components should be removed."
+                read -p "[Y/n]: " SELECTION
+                if [[ $SELECTION == "y" ]] || [[ $SELECTION == "Y" ]] || [[ $SELECTION == "" ]]; then
+                        /opt/artemis/artemis-setup -u
+                fi
+        elif [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
+                read -p "This version of Artemis is already installed. Would you like to reinstall? [y/N]: " SELECTION
+                if  [[ $SELECTION != "y" ]] && [[ $SELECTION != "Y" ]]; then
+                        exit 0
+                fi
+        else
+                read -p "A newer version of Artemis is already installed. Would you like to remove it and install this version? [y/N]: " SELECTION
+                if  [[ $SELECTION == "y" ]] || [[ $SELECTION == "Y" ]]; then
+                        /opt/artemis/artemis-setup -u
+                else
+                        exit 0
+                fi
+        fi
+fi
+
+# If non-interactive mode is selected, verify the integrity of the answer file and retrieve config variables.
+if [[ $MODE -eq 1 ]];then
+        if grep -q MYDOMAIN= "$AFILE" && grep -q RELAYHOST= "$AFILE" && grep -q MAXPROC= "$AFILE" && grep -q MAXHASH= "$AFILE" \
+        && grep -q IDIR= "$AFILE" && grep -q EMAIL= "$AFILE" && grep -q && grep -q LOGSDATA= "$AFILE"; then
+                MYDOMAIN=$(grep MYDOMAIN "$AFILE" | cut -d'=' -f2)
+                RELAYHOST=$(grep RELAYHOST "$AFILE" | cut -d'=' -f2)
+                MAXPROC=$(grep MAXPROC "$AFILE" | cut -d'=' -f2)
+                MAXHASH=$(grep MAXHASH "$AFILE" | cut -d'=' -f2)
+                IDIR=$(grep IDIR "$AFILE" | cut -d'=' -f2)
+                EMAIL=$(grep EMAIL "$AFILE" | cut -d'=' -f2)
+                LOGSDATA=$(grep LOGSDATA "$AFILE" | cut -d'=' -f2)
+	else
+                echo "Answer file integrity check failed"
+                echo "Aborting installation"
+                exit 1
+        fi
+else	# If Interactive Mode is selected then acquire artemis.conf settings from the user
+	while ! [[ $MAXPROC =~ ^[1-9]+$ ]]; do
+                read -p 'Artemis: Enter the concurrent scan suppression threshold [4]: ' MAXPROC
+                if [[ -z $MAXPROC ]]; then
+                        MAXPROC=4
+                fi
+                if ! [[ $MAXPROC =~ ^[1-9]+$ ]]; then
+                        echo "Invalid response. Try again."
+                fi
+        done
+        while ! [[ $MAXHASH =~ ^[0-9]+$ ]]; do
+                read -p 'Artemis: Indicate the maximum number of hashes to store in the hash cache [1000]: ' MAXHASH
+                if [[ -z $MAXHASH ]]; then
+                        MAXHASH=1000
+                fi
+                if ! [[ $MAXHASH =~ ^[0-9]+$ ]]; then
+                        echo "Invalid response. Try again."
+                fi
+        done
+        while ! [[ $LOGSDATA =~ ^[0-9]+$ ]] || [[ $LOGSDATA -gt 365 ]]; do
+                read -p 'Artemis: How many days worth of log data should be maintained? (0-365) [14]: ' LOGSDATA
+                if  [[ -z $LOGSDATA ]]; then
+                        LOGSDATA=14
+                fi
+                if  ! [[ $LOGSDATA =~ ^[0-9]+$ ]] || [[ $LOGSDATA -gt 365 ]]; then
+                        echo "Invalid response. Try again."
+                fi
+	done
+        read -p 'Artemis: Where would you like the infected files to be stored? Leave blank if you do not want infected files to be moved: ' IDIR
+        read -p 'Artemis: Enter recipient email address(es) for malware alerts. Multiple addresses should be comma separated: ' EMAIL
+        if [[ -z $EMAIL ]]; then
+                EMAIL=root@localhost
+        fi
+fi
+
+printf "Installing scanner node: %s\n" "$HOSTNAME"
+
+# Check for a running instanace of Artemis
+if [[ -n $(pgrep -x artemis) ]]; then
+        echo "Shutting down Artemis..."
+        service artemis stop
+fi
+
+#Install prerequisite packages if necessary
+echo "Checking prerequisites..."
+if ! dpkg --get-selections | grep -v deinstall | grep -q postfix; then
+        if [[ $MODE -eq 0 ]]; then
+                while [[ -z $MYDOMAIN ]]; do
+                        read -p 'Postfix: Enter your domain name? (ex: example.com): ' MYDOMAIN
+                        if [[ -z $MYDOMAIN ]]; then
+                                echo "Postfix: A domain name is required."
+                        fi
+                done
+                read -p 'Postfix: Enter your relay host? (ex: smtp.example.com) Leave blank for none: ' RELAYHOST
+        fi
+        echo "Installing postfix..."
+        debconf-set-selections <<< "postfix postfix/mailname string $MYDOMAIN"
+        debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
+        apt-get -y install postfix > /dev/null 2>&1
+        echo "$MYDOMAIN" > /etc/mailname
+        cp ./conf/main.cf /etc/postfix/main.cf
+        sed -i "31s/.*/myhostname = $HOSTNAME.$(cat /etc/mailname)/" /etc/postfix/main.cf
+        sed -i "34s/.*/mydestination = $HOSTNAME, localhost.localdomain, localhost, $HOSTNAME.$(cat /etc/mailname)/" /etc/postfix/main.cf
+        sed -i "35s/.*/relayhost = $RELAYHOST/" /etc/postfix/main.cf
+        cp ./conf/hosts /etc/hosts
+        sed -i "2s/.*/127.0.1.1       $(cat /etc/mailname) $HOSTNAME/" /etc/hosts
+        postfix reload > /dev/null 2>&1
+fi
+if ! dpkg --get-selections | grep -v deinstall | grep -q inotify-tools; then
+        echo "Installing inotify-tools..."
+        apt-get -y install inotify-tools > /dev/null 2>&1
+fi
+if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq clamav; then
+        echo "Installing clamav..."
+        apt-get -y install clamav > /dev/null 2>&1
+        echo "Fetching a fresh clam..."
+        freshclam > /dev/null 2>&1
+fi
+if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq mysql-server; then
+        echo "Installing mysql-server..."
+        echo "debconf debconf/frontend select noninteractive" | sudo debconf-set-selections
+        echo "mysql-server mysql-server/root_password password" | sudo debconf-set-selections
+        echo "mysql-server mysql-server/root_password_again password" | sudo debconf-set-selections
+        apt-get -y install mysql-server > /dev/null 2>&1
+        # Set a random password for the mysql root account
+        mysqladmin -u root -p'password' password "$(date +%s%N | sha256sum | base64 | head -c 32)" > /dev/null 2>&1
+fi
+if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -qx syslog-ng; then
+	echo "Installing syslog-ng..."
+	apt-get -y install syslog-ng-core > /dev/null 2>&1
+fi
+
+# Configure syslog-ng to receive syslogs from remote hosts
+cat <<EOF >> /etc/syslog-ng/syslog-ng.conf
+
+source net { udp(); };
+destination artemis { file("/opt/artemis/logs/artemis-files.log"); };
+log { source(net); destination(artemis); };
+EOF
+service syslog-ng restart
+
+# Create /etc/artemis.conf
+echo "Generating /etc/artemis.conf..."
+genConf > /etc/artemis.conf
+
+# Create database
+if [[ -z $( mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SHOW DATABASES LIKE 'artemis';") ]]; then
+        echo "Building database..."
+        mysql --defaults-file=/etc/mysql/debian.cnf -e "CREATE DATABASE artemis;"
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Cache (HashID int NOT NULL AUTO_INCREMENT, Hash char(64) NOT NULL, Result tinyint(1), Hits int N$
+                TimeStamp bigint NOT NULL, PRIMARY KEY (HashID)) ENGINE=InnoDB;"
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Logs (EntryID int NOT NULL AUTO_INCREMENT, DateTime DATETIME NOT NULL, Hash char(64) NOT NULL, \
+                Scanned tinyint(1), Queued tinyint(1), Result tinyint(1), FileName varchar(255) NOT NULL, FileSize bigint NOT NULL, ScanTime float, QTime double, \
+                FileType varchar(5) NOT NULL, Source varchar(255), Destination varchar(255), PRIMARY KEY (EntryID)) ENGINE=InnoDB;"
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Queue (FileID int NOT NULL AUTO_INCREMENT, FileName varchar(255) NOT NULL, TimeStamp varchar(255$
+                LogsID int NOT NULL, EntryTime double NOT NULL, PRIMARY KEY (FileID)) ENGINE=InnoDB;"
+fi
+
+# Create a user group for the forwarder nodes
+groupadd artemis
+
+# Copy files to appropriate locations
+echo Copying files...
+if ! [[ -d /opt/artemis/ ]]; then
+        mkdir -p /opt/artemis/
+fi
+mkdir -m 664 /opt/artemis/extracted/
+chgrp -R artemis /opt/artemis/extracted/
+cp ./artemis-setup /opt/artemis/
+cp ./scripts/artemis /usr/bin/artemis
+cp ./scripts/artemis-logfile-cleanup /usr/bin/artemis-logfile-cleanup
+cp ./scripts/artemis-brolog-cleanup /usr/bin/artemis-brolog-cleanup
+cp ./scripts/artemis-logRepair /usr/bin/artemis-logRepair
+cp ./scripts/orion /usr/bin/orion
+cp ./scripts/arteStat /usr/bin/arteStat
+cp ./scripts/tracks /usr/bin/tracks
+cp ./scripts/artemis-logstable-cleanup /usr/bin/artemis-logstable-cleanup
+cp ./scripts/parsOpts.sh /opt/artemis/
+cp ./scripts/artemisInit /usr/sbin/artemisInit
+
+cp ./conf/artemis-brolog-cron /etc/cron.d/artemis-brolog-cron
+cp ./conf/artemis-logfile-cron /etc/cron.d/artemis-logfile-cron
+cp ./conf/artemis-logstable-cron /etc/cron.d/artemis-logstable-cron
+cp ./conf/artemis-logRepair-cron /etc/cron.d/artemis-logRepair-cron
+cp ./conf/artemis.service /lib/systemd/system/artemis.service
+
+# Reload systemctl
+systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
+
+# Create whitelist file if necessary
+if ! [[ -e /opt/artemis/whitelist ]]; then
+        cat <<EOF > /opt/artemis/whitelist
+# Artemis Hash Whitelist
+# This file can be used to whitelist the SHA256 hashes of known clean files. Hashes should be whitespace separated.
+EOF
+fi
+
+# Create blacklist file if necessary
+if ! [[ -e /opt/artemis/blacklist ]]; then
+        cat <<EOF > /opt/artemis/blacklist
+# Artemis Hash Blacklist
+# This file can be used to blacklist the SHA256 hashes of known infected files in order to reduce the number of scans performed
+# or flag files that are not otherwise detected by ClamAV. Hashes should be whitespace separated.
+EOF
+fi
+
+echo "Installation complete"
+echo "Starting Artemis..."
+service artemis start
+exit
+
