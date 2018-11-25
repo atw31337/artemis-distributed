@@ -24,7 +24,7 @@ usage ()
 {
 cat <<EOF
 
-Artemis NVM Forwarder Installer
+Artemis NTVM Forwarder Installer
 Usage: $0 [OPTION]
 
         Options:
@@ -251,7 +251,9 @@ cp ./artemis-forwarder /usr/bin/
 cp ./artemis-forwarder.service /lib/systemd/system/
 cp ./artemisFInit /usr/sbin/
 cp ./extract.bro "$EXTLOC"
-mkdir -p /opt/artemis/
+if ! [[ -d /opt/artemis/ ]]; then
+	mkdir -p /opt/artemis/
+fi
 cp ./forwarder-setup /opt/artemis/
 
 # Reload systemctl

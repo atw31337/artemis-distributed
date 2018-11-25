@@ -24,7 +24,7 @@ usage ()
 {
 cat <<EOF
 
-Artemis NVM Installer
+Artemis NTVM Installer
 Usage: $0 [OPTION] <FILE>
 
         Options:
