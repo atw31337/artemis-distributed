@@ -139,8 +139,6 @@ echo "Number of Files Queued: $QUEUED"
 echo
 echo "Percentage of Files Queued: $(echo "scale=2; 100 * $QUEUED / $TOTAL" | bc)%"
 echo
-echo "Percentage of Scanned Files Queued: $(echo "scale=2; 100 * $QUEUED / $SCANNED" | bc)%"
-echo
 AQT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(QTime), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND QTime IS NOT NULL;")
 if [[ $AQT == 'NULL' ]]; then
 	AQT=0

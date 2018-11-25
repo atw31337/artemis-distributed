@@ -371,12 +371,12 @@ genConf > /etc/artemis.conf
 if [[ -z $( mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SHOW DATABASES LIKE 'artemis';") ]]; then
         echo "Building database..."
         mysql --defaults-file=/etc/mysql/debian.cnf -e "CREATE DATABASE artemis;"
-        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Cache (HashID int NOT NULL AUTO_INCREMENT, Hash char(64) NOT NULL, Result tinyint(1), Hits int N$
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Cache (HashID int NOT NULL AUTO_INCREMENT, Hash char(64) NOT NULL, Result tinyint(1), Hits int NOT NULL, \
                 TimeStamp bigint NOT NULL, PRIMARY KEY (HashID)) ENGINE=InnoDB;"
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Logs (EntryID int NOT NULL AUTO_INCREMENT, DateTime DATETIME NOT NULL, Hash char(64) NOT NULL, \
                 Scanned tinyint(1), Queued tinyint(1), Result tinyint(1), FileName varchar(255) NOT NULL, FileSize bigint NOT NULL, ScanTime float, QTime double, \
                 FileType varchar(5) NOT NULL, Source varchar(255), Destination varchar(255), PRIMARY KEY (EntryID)) ENGINE=InnoDB;"
-        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Queue (FileID int NOT NULL AUTO_INCREMENT, FileName varchar(255) NOT NULL, TimeStamp varchar(255$
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Queue (FileID int NOT NULL AUTO_INCREMENT, FileName varchar(255) NOT NULL, TimeStamp DATETIME NOT NULL, \
                 LogsID int NOT NULL, EntryTime double NOT NULL, PRIMARY KEY (FileID)) ENGINE=InnoDB;"
 fi
 

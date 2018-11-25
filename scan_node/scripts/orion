@@ -214,7 +214,7 @@ for (( ; ; )); do
 		autoStop
 	fi
 	if [[ $(pgrep -c clamscan) -lt $MAXPROC ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Queue;") -ne 0  ]]; then
-                FILEID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileID FROM Queue ORDER BY FileID ASC LIMIT 1;")
+                FILEID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileID FROM Queue ORDER BY TimeStamp ASC LIMIT 1;")
                 FILE=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Queue WHERE FileID=$FILEID;")
                 TSTAMP=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT TimeStamp FROM Queue WHERE FileID=$FILEID;")
                 LOGSID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT LogsID FROM Queue WHERE FileID=$FILEID;")
@@ -222,7 +222,7 @@ for (( ; ; )); do
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Queue WHERE FileID=$FILEID;"
                 filescan "$FILE" &
         fi
-	sleep 0.1       # Reduces the frequency of checks and cpu usage
+	sleep 0.05       # Staggers processes and reduces cpu overhead
 done
 
 exit
