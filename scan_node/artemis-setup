@@ -213,6 +213,8 @@ while getopts ":huf:" OPT; do
         esac
 done
 
+echo "Checking version information..."
+# bc is required to check version info
 apt-get update -qq
 if ! dpkg --get-selections | grep -v deinstall | grep -wq bc; then
         apt-get -y install bc > /dev/null 2>&1
@@ -236,12 +238,18 @@ if [[ -e /opt/artemis/artemis-setup ]]; then
                 if  [[ $SELECTION != "y" ]] && [[ $SELECTION != "Y" ]]; then
                         exit 0
                 fi
-        else
+        elif (( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) > $VERSION" | bc -l) )); then
                 read -p "A newer version of Artemis is already installed. Would you like to remove it and install this version? [y/N]: " SELECTION
                 if  [[ $SELECTION == "y" ]] || [[ $SELECTION == "Y" ]]; then
                         /opt/artemis/artemis-setup -u
                 else
                         exit 0
+                fi
+	else
+		echo "A different version of Artemis has been detected; however, no corresponding version of the install/uninstall script can be found."
+                read -p  "Would you like to attempt to uninstall the previous version before continuing? [y/N]: " SELECTION
+                if [[ $SELECTION == "y" ]] || [[ $SELECTION == "Y" ]]; then
+                        /opt/artemis/artemis-installer -u
                 fi
         fi
 fi
