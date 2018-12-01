@@ -104,6 +104,8 @@ if [[ -e $1 ]]; then
 		RESULT=$?
 		# Add the result of the scan to the Cache table
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Result=$RESULT WHERE HashID=$HASHID;"
+		# Release the worker slot in the workers pid directory
+		rm /opt/artemis/cache/workers/$BASHPID.pid
 		SCANTIME=$(grep Time "$TLOG" | awk '{print $2}')
 		getSrcDst
 		# Update the Logs table with the data from the scanned file
@@ -166,12 +168,15 @@ if [[ -e $1 ]]; then
 			mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE HashID=$DEL;"
 		done
 	else	# Hash is present in the Cache table
+		# Release the worker slot in the workers pid directory
+		rm /opt/artemis/cache/workers/$BASHPID.pid
 		SCANNED=0
 		getSrcDst
-		RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
 		# Update the Logs and Cache table entries
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
                 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Hits=Hits+1, TimeStamp=$(date +%s%N) WHERE HashID=$HASHID;"
+		# Get the result from the Cache table
+		RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
 		if [[ $RESULT == "NULL" ]]; then
 			echo $LOGSID >> /opt/artemis/cache/$HASH
 		else	# Result is present in the Cache table
@@ -210,19 +215,23 @@ if [[ -z "$MAXPROC" ]] || [[ -z "$MAXHASH" ]] || [[ -z "$EMAIL" ]] || [[ -z "$DI
 fi
 
 for (( ; ; )); do
-        if [[ $(free | head -n2 | tail -n1 | awk '{print $4}') -lt 51200 ]]; then	# If free memory drops below 50 MB Artemis initiates an automatic stop
+        if [[ $(free | head -n2 | tail -n1 | awk '{print $4}') -lt 51200 ]]; then	# If free memory drops below 50 MB, Artemis initiates an automatic stop
 		autoStop
 	fi
-	if [[ $(pgrep -c clamscan) -lt $MAXPROC ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Queue;") -ne 0  ]]; then
+	if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Queue;") -ne 0  ]]; then
                 FILEID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileID FROM Queue ORDER BY TimeStamp ASC LIMIT 1;")
                 FILE=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Queue WHERE FileID=$FILEID;")
                 TSTAMP=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT TimeStamp FROM Queue WHERE FileID=$FILEID;")
                 LOGSID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT LogsID FROM Queue WHERE FileID=$FILEID;")
 		ENTRYTIME=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT EntryTime FROM Queue WHERE FileID=$FILEID;")
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Queue WHERE FileID=$FILEID;"
-                filescan "$FILE" &
-        fi
-	sleep 0.05       # Staggers processes and reduces cpu overhead
+                while [[ $(ls /opt/artemis/cache/workers/ | grep -cw pid) -ge $MAXPROC ]]; do
+                        sleep 0.05
+                done
+		filescan "$FILE" &
+		# Add the worker to the workers pid directory
+		touch /opt/artemis/cache/workers/$!.pid
+	fi
 done
 
 exit

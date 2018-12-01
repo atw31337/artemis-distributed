@@ -176,7 +176,6 @@ fi
 # Check that the configuration file exists
 if [[ ! -f $CONF ]]; then
 	echo Artemis: Configuration file does nost exist!
-	rm /var/run/vS.pid
 	exit 1
 fi
 
@@ -257,6 +256,9 @@ if  ! mount | grep -q /opt/artemis/cache ; then
 	chmod 600 /opt/artemis/cache/
 fi
 
+# Create a woker pid directory in the cache
+mkdir /opt/artemis/cache/workers/
+
 # Load the whitelist and blacklist into memory if space permits
 if cp /opt/artemis/whitelist /opt/artemis/cache/ && cp /opt/artemis/blacklist /opt/artemis/cache/; then
 	chmod 600 /opt/artemis/cache/whitelist /opt/artemis/cache/blacklist
@@ -266,7 +268,7 @@ else
 	LISTLOC="/opt/artemis"
 fi
 
-# Start the Orion LB scanner
+# Start the Orion scanner
 /usr/bin/orion &
 
 inotifywait -q -m -e create,moved_to --format '%w%f' "$DIR" | while read FILE
