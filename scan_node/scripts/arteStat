@@ -119,7 +119,12 @@ echo
 TOTAL=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END');")
 echo "Number of Files Processed: $TOTAL"
 echo
-echo "Average File Size: $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END');") B"
+AFS=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END');") B"
+if [[ $AFS != 'NULL' ]]; then
+	echo "Average File Size: $AFS"
+else
+	echo "Average File Size: not enough data"
+fi
 echo
 SCANNED=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Scanned=1;")
 echo "Number of Files Scanned: $SCANNED"
@@ -131,12 +136,18 @@ else
 fi
 echo
 AST=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(ScanTime), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND ScanTime IS NOT NULL;")
-if [[ $AST == 'NULL' ]]; then
-	AST=0
+if [[ $AST != 'NULL' ]]; then
+	echo "Average Scan Time: $AST s"
+else
+	echo "Average Scan Time: not enough data"
 fi
-echo "Average Scan Time: $AST s"
 echo
-echo "Average Size of Scanned Files: $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Scanned=1;") B"
+ASS=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Scanned=1;") B"
+if [[ $ASS != 'NULL' ]]; then
+	echo "Average Size of Scanned Files: $ASS"
+else
+	echo "Average Size of Scanned Files: not enough data"
+fi 
 echo
 QUEUED=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Queued=1;")
 echo "Number of Files Queued: $QUEUED"
@@ -148,10 +159,11 @@ else
 fi
 echo
 AQT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(QTime), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND QTime IS NOT NULL;")
-if [[ $AQT == 'NULL' ]]; then
-	AQT=0
+if [[ $AQT != 'NULL' ]]; then
+	echo "Average Queue Time: $AQT s"
+else
+	echo "Average Queue Time: not enough data"
 fi
-echo "Average Queue Time: $AQT s"
 echo
 echo "Total Files by File Type:"
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileType, COUNT(*) AS Count FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') GROUP BY FileType ORDER BY Count DESC;"
