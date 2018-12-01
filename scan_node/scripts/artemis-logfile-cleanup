@@ -1,5 +1,5 @@
 #!/bin/bash
-# Title: artemis-log-cleanup
+# Title: artemis-logfile-cleanup
 # Description: Maintains the size of the Artemis log files in /var/log/
 # Version 1.00.00
 #
@@ -24,18 +24,21 @@ SIZE=$(stat -c%s /var/log/virus-scan.log)
 
 
 if [[ $SIZE -gt $MAXSIZE ]]; then
-	gzip /var/log/virus-scan.log.*
+	# Ensure that all log file archives are currently zipped
+	gzip /var/log/virus-scan.log.* > /dev/null 2>&1
+	# If the archived files have reached their maximum number of 6 archives then delete the oldest one
 	if [[ -e /var/log/virus-scan.log.6.gz ]]; then
 		rm -f /var/log/virus-scan.log.6.gz
 	fi
-	for (( i=5; i>0; i-- )); do
+	for (( i=5; i>0; i-- )); do	# Determine the number of the oldest archived file
 		if [[ -e /var/log/virus-scan.log.$i.gz ]]; then
-			for (( x=$i; x>0; x-- )); do
+			for (( x=$i; x>0; x-- )); do	# When the number of the oldest archived file is found begin rotating
 				mv /var/log/virus-scan.log.$x.gz /var/log/virus-scan.log.$(((x+1))).gz
 			done
 			break
 		fi
 	done
+	# Move the current log file to the first archived position and zip it
 	mv /var/log/virus-scan.log /var/log/virus-scan.log.1
 	gzip /var/log/virus-scan.log.1
 fi

@@ -20,21 +20,24 @@
 
 
 # Ensure that all archived log files are currently zipped
-gzip /opt/artemis/logs/artemis-files.log.*
+gzip /opt/artemis/logs/artemis-files.log.* > /dev/null 2>&1
 
+# If the archived files have reached their maximum number of 6 archives then delete the oldest one
 if [[ -e /opt/artemis/logs/artemis-files.log.6.gz ]]; then
 	rm -f /opt/artemis/logs/artemis-files.log.6.gz
 fi
-for (( i=5; i>0; i-- )); do
+for (( i=5; i>0; i-- )); do	# Determine the number of the oldest archived file
 	if [[ -e /opt/artemis/logs/artemis-files.log.$i.gz ]]; then
-        	for (( x=$i; x>0; x-- )); do
+        	for (( x=$i; x>0; x-- )); do	# When the number of the oldest archived file is found begin rotating
 			mv /opt/artemis/logs/artemis-files.log.$x.gz /opt/artemis/logs/artemis-files.log.$(((x+1))).gz
 		done
 		break
 	fi
 done
+# Move the current log file to the first archived position
 mv /opt/artemis/logs/artemis-files.log /opt/artemis/logs/artemis-files.log.1
 # Remove entries in the log for files that were not extracted by Bro in order to minimize log file storage size
 sed -i '/extracted/!d' /opt/artemis/logs/artemis-files.log.1
+# Zip the most recent archived log
 gzip /opt/artemis/logs/artemis-files.log.1
 exit
