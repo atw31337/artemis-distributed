@@ -124,7 +124,11 @@ echo
 SCANNED=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Scanned=1;")
 echo "Number of Files Scanned: $SCANNED"
 echo
-echo "File Scan Percentage: $(echo "scale=2; 100 * $SCANNED / $TOTAL" | bc)%"
+if [[ $TOTAL -gt 0 ]]; then
+	echo "File Scan Percentage: $(echo "scale=2; 100 * $SCANNED / $TOTAL" | bc)%"
+else
+	echo "File Scan Percentage: not enough data"
+fi
 echo
 AST=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(ScanTime), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND ScanTime IS NOT NULL;")
 if [[ $AST == 'NULL' ]]; then
@@ -137,7 +141,11 @@ echo
 QUEUED=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Queued=1;")
 echo "Number of Files Queued: $QUEUED"
 echo
-echo "Percentage of Files Queued: $(echo "scale=2; 100 * $QUEUED / $TOTAL" | bc)%"
+if [[ $TOTAL -gt 0 ]]; then
+	echo "Percentage of Files Queued: $(echo "scale=2; 100 * $QUEUED / $TOTAL" | bc)%"
+else
+	echo "Percentage of Files Queued: not enough data"
+fi
 echo
 AQT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(QTime), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND QTime IS NOT NULL;")
 if [[ $AQT == 'NULL' ]]; then
