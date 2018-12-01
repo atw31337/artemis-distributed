@@ -275,5 +275,11 @@ if [[ $CLEAN -eq 1 ]]; then
         apt-get -y purge mlocate > /dev/null 2>&1
 fi
 
+echo "Restarting Bro..."
+so-bro-restart > /dev/null 2>&1
+
+echo "Installation Complete."
 echo "Starting Artemis forwarder..."
 service artemis-forwarder start
+
+exit
