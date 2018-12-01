@@ -119,9 +119,9 @@ echo
 TOTAL=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END');")
 echo "Number of Files Processed: $TOTAL"
 echo
-AFS=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END');") B"
+AFS=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END');")
 if [[ $AFS != 'NULL' ]]; then
-	echo "Average File Size: $AFS"
+	echo "Average File Size: $AFS B"
 else
 	echo "Average File Size: not enough data"
 fi
@@ -142,9 +142,9 @@ else
 	echo "Average Scan Time: not enough data"
 fi
 echo
-ASS=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Scanned=1;") B"
+ASS=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT ROUND( AVG(FileSize), 3) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Scanned=1;")
 if [[ $ASS != 'NULL' ]]; then
-	echo "Average Size of Scanned Files: $ASS"
+	echo "Average Size of Scanned Files: $ASS B"
 else
 	echo "Average Size of Scanned Files: not enough data"
 fi 
