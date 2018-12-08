@@ -23,15 +23,8 @@ start)
         ;;
 stop)
         pkill -9 "inotify"
-	for (( i=0; i < 50; i++ )); do
-		if [[ $(pgrep -c clamscan) -eq 0 ]]; then
-			break
-		else
-			sleep 0.1
-		fi
-	done
-	while ps aux | grep -q '/artemis$'; do
-		sleep 0.5
+	while [[ $(pgrep -xc artemis) -gt 0 ]]; do
+		sleep 0.1
 	done
 	;;
 restart)
