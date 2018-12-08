@@ -42,7 +42,7 @@ if [[ $(echo "$DIR" | tail -c -1) != "/" ]]; then
 	DIR+="/"
 fi
 
-cat << EOF
+cat << EOF > /etc/artemis.conf
 ###############################################################
 #     Artemis Network Virus Monitor configuration file        #
 ###############################################################
@@ -57,6 +57,7 @@ SCANNER=$SCANNER
 SDIR=$SDIR
 
 EOF
+chmod 600 /etc/artemis.conf
 }
 
 uninstall () {
@@ -262,7 +263,7 @@ fi
 
 # Create /etc/artemis.conf
 echo "Generating /etc/artemis.conf..."
-genConf > /etc/artemis.conf
+genConf
 
 # Copy files
 cp ./artemis-forwarder /usr/bin/
