@@ -201,32 +201,11 @@ if [[ -n $(pgrep -x artemis-forwarder) ]]; then
 fi
 
 echo "Installing Artemis forwarder..."
-echo "Checking prerequisites..."
 
 # Determine if mlocate needs to be installed
 if ! dpkg --get-selections | grep -v deinstall | grep -q mlocate; then
         CLEAN=1
         apt-get -y install mlocate > /dev/null 2>&1
-fi
-
-# Verify that syslog-ng is installed and configure it to send bro files-logs. If it is not installed, install it.
-if ! dpkg --get-selections | grep -v deinstall | grep -q syslog-ng; then
-	echo "Installing syslog-ng..."
-	apt-get -y install syslog-ng-core > /dev/null 2>&1
-fi
-
-cat << EOF >> /etc/syslog-ng/syslog-ng.conf
-
-source s_bro_files { file("/nsm/bro/logs/current/files.log" flags(no-parse) program_override("bro_files")); };
-destination artemis { udp("$(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)" port(514)); };
-log { source(s_bro_files); destination(artemis); };
-EOF
-service syslog-ng restart
-
-# Install inotify-tools if necessary
-if ! dpkg --get-selections | grep -v deinstall | grep -q inotify-tools; then
-        echo "Installing inotify-tools..."
-        apt-get -y install inotify-tools > /dev/null 2>&1
 fi
 
 # Search for extract.bro
@@ -257,6 +236,28 @@ case $(locate extract.bro | grep -vc ./extract.bro) in
                 EXTLOC="${LIST[$((SELECT-1))]}"
                 ;;
 esac
+
+echo "Checking prerequisites..."
+
+# Verify that syslog-ng is installed and configure it to send bro files-logs. If it is not installed, install it.
+if ! dpkg --get-selections | grep -v deinstall | grep -q syslog-ng; then
+	echo "Installing syslog-ng..."
+	apt-get -y install syslog-ng-core > /dev/null 2>&1
+fi
+
+cat << EOF >> /etc/syslog-ng/syslog-ng.conf
+
+source s_bro_files { file("/nsm/bro/logs/current/files.log" flags(no-parse) program_override("bro_files")); };
+destination artemis { udp("$SCANNER" port(514)); };
+log { source(s_bro_files); destination(artemis); };
+EOF
+service syslog-ng restart
+
+# Install inotify-tools if necessary
+if ! dpkg --get-selections | grep -v deinstall | grep -q inotify-tools; then
+        echo "Installing inotify-tools..."
+        apt-get -y install inotify-tools > /dev/null 2>&1
+fi
 
 # Create /etc/artemis.conf
 echo "Generating /etc/artemis.conf..."
