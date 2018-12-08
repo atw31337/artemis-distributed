@@ -210,7 +210,7 @@ fi
 
 # Search for extract.bro
 updatedb
-case $(locate extract.bro | grep -vc ./extract.bro) in
+case $(locate extract.bro | wc -l) in
         0)
                 echo "Unable to locate extract.bro file. Verify that Bro is installed and properly configured to extract files."
                 echo "Aborting installation..."
@@ -220,10 +220,10 @@ case $(locate extract.bro | grep -vc ./extract.bro) in
                 exit 1
                 ;;
         1)
-                EXTLOC=$(locate extract.bro | grep -v ./extract.bro)
+                EXTLOC=$(locate extract.bro)
                 ;;
         *)
-                LIST=($(locate extract.bro | grep -v ./extract.bro))
+                LIST=($(locate extract.bro))
                 printf "Mulitple instances of extract.bro were found: \n"
                 for ((i=0; i<"${#LIST[@]}"; i++)); do
                         echo "$((i+1))) ${LIST[$i]}"
@@ -267,7 +267,7 @@ genConf > /etc/artemis.conf
 cp ./artemis-forwarder /usr/bin/
 cp ./artemis-forwarder.service /lib/systemd/system/
 cp ./artemisFInit /usr/sbin/
-cp ./extract.bro "$EXTLOC"
+cp ./extract.conf "$EXTLOC"
 if ! [[ -d /opt/artemis/ ]]; then
 	mkdir -p /opt/artemis/
 fi
