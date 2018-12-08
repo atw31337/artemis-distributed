@@ -284,7 +284,7 @@ echo "Enter the username of the account that should be used to connect to the sc
 read -p "The account must have sudo privileges during installation: " USERNAME
 ssh-copy-id -i /root/.ssh/artemis -o StrictHostKeyChecking=no "$USERNAME"@"$SCANNER"
 ssh -qti /root/.ssh/artemis "$USERNAME"@"$SCANNER" 'sudo usermod -a -G artemis $(logname)'
-printf"\nLOG=%s" "$USERNAME" >> /etc/artemis.conf
+printf "\nLOG=%s" "$USERNAME" >> /etc/artemis.conf
 
 # Remove mlocate if it was not previously installed
 if [[ $CLEAN -eq 1 ]]; then
