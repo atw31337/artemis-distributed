@@ -120,6 +120,14 @@ if [[ $ANSWER == 'y' ]]; then
 else
 	echo "clamav will not be uninstalled."
 fi
+read -p 'Would you like to uninstall openssh-server [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
+if [[ $ANSWER == 'y' ]]; then
+	echo "Removing openssh-server..."
+	service ssh stop
+	apt-get -y purge openssh-server > /dev/null 2>&1
+else
+	echo "openssh-server will not be uninstalled."
+fi
 read -p 'Would you like to remove the Artemis database? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
 if [[ $ANSWER == 'y' ]]; then
 	echo "Removing Artemis database..."
@@ -365,6 +373,10 @@ if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq mys
         apt-get -y install mysql-server > /dev/null 2>&1
         # Set a random password for the mysql root account
         mysqladmin -u root -p'password' password "$(date +%s%N | sha256sum | base64 | head -c 32)" > /dev/null 2>&1
+fi
+if ! dpkg --get-selection | grep -v deinstall | awk '{print $1}' | grep -xq openssh-server; then
+	echo "Installing openssh-server.."
+	apt-get -y install openssh-server > /dev/null 2>&1
 fi
 if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -qx syslog-ng; then
 	echo "Installing syslog-ng..."
