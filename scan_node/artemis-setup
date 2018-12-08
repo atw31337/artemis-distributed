@@ -36,14 +36,13 @@ Usage: $0 [OPTION] <FILE>
 EOF
 }
 
-genConf ()
-{
-        # Ensure that the infection directory variable ends with "/"
-        if [[ -n $IDIR ]]; then
-                if [[ $(echo -n "$IDIR" | tail -c -1) != "/" ]]; then
-                        IDIR+="/"
-                fi
+genConf () {
+# Ensure that the infection directory variable ends with "/"
+if [[ -n $IDIR ]]; then
+	if [[ $(echo -n "$IDIR" | tail -c -1) != "/" ]]; then
+        	IDIR+="/"
         fi
+fi
 
 cat << EOF
 ###############################################################
@@ -70,6 +69,8 @@ SDIR=/opt/artemis/extracted/
 
 # Number of days worth of log data that will be maintained.
 LOGSDATA=$LOGSDATA
+
+EOF
 }
 
 uninstall () {
@@ -168,7 +169,6 @@ if [[ $(id -u) -ne 0 ]]; then
 fi
 
 MODE=0 # 0 is Interactive Mode and 1 is Automated Mode
-CLEAN=0 # Determines whether or not mlocate needs to be removed after installation
 
 while getopts ":huf:" OPT; do
         case $OPT in
@@ -236,21 +236,30 @@ if [[ -e /opt/artemis/artemis-setup ]]; then
         elif [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
                 read -p "This version of Artemis is already installed. Would you like to reinstall? [y/N]: " SELECTION
                 if  [[ $SELECTION != "y" ]] && [[ $SELECTION != "Y" ]]; then
-                        exit 0
+                        echo "Installation aborted."
+			exit 0
                 fi
-        elif (( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) > $VERSION" | bc -l) )); then
+        elif (( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) > $VERSION" | bc -l) )) && \
+		[[ $(grep Version /opt/artemis/artemis-setup | head -n1 | cut -d' ' -f3) == $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then
                 read -p "A newer version of Artemis is already installed. Would you like to remove it and install this version? [y/N]: " SELECTION
                 if  [[ $SELECTION == "y" ]] || [[ $SELECTION == "Y" ]]; then
                         /opt/artemis/artemis-setup -u
                 else
-                        exit 0
+                        echo "Installation aborted."
+			exit 0
                 fi
 	else
 		echo "A different version of Artemis has been detected; however, no corresponding version of the install/uninstall script can be found."
                 read -p  "Would you like to attempt to uninstall the previous version before continuing? [y/N]: " SELECTION
                 if [[ $SELECTION == "y" ]] || [[ $SELECTION == "Y" ]]; then
-                        /opt/artemis/artemis-installer -u
-                fi
+                        /opt/artemis/artemis-setup -u
+                else
+			read -p "Would you like to proceed with installation? [y/N]: " SELECTION
+			if [[ $SELECTION != "y" ]] && [[ $SELECTION != "Y" ]]; then
+				echo "Installation aborted."
+				exit 0
+			fi
+		fi
         fi
 fi
 
@@ -343,7 +352,7 @@ if ! dpkg --get-selections | grep -v deinstall | grep -q inotify-tools; then
         apt-get -y install inotify-tools > /dev/null 2>&1
 fi
 if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq clamav; then
-        echo "Installing clamav..."
+       echo "Installing clamav..."
         apt-get -y install clamav > /dev/null 2>&1
         echo "Fetching a fresh clam..."
         freshclam > /dev/null 2>&1
