@@ -74,8 +74,8 @@ if [[ $ANSWER == 'y' ]]; then
 	apt-get -y purge syslog-ng-core > /dev/null 2>&1
 else
 	echo "syslog-ng will not be uninstalled."
-	sed -i "/destination artemis { udp("$(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)" port(514)); };/d" /etc/syslog-ng/syslog-ng.conf
-	sed -i '/log { source(s_bro_files); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf 
+	sed -i '/destination artemis/' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/log { source(s_bro_files); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf
 fi
 read -p 'Would you like uninstall inotify-tools? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
 if [[ $ANSWER == 'y' ]]; then
@@ -144,7 +144,7 @@ if [[ -e /opt/artemis/forwarder-setup ]]; then
 	# Verify that the old setup script version corresponds to the version of Artemis forwarder that is currently installed and that
 	# it is less than the version that is about to be installed
 	if [[ $(grep Version /opt/artemis/forwarder-setup | head -n1 | cut -d' ' -f3) == $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]] && \	# Old setup script and conf file version match
-	(( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) < $VERSION" | bc -l) )); then	# and conf file version is less than this file's version
+	(( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) < $VERSION" | bc -l) )); then	# and conf file version is less than the version of this file
 		echo "A previous version of Artemis forwarder has been detected."
 		echo "Would you like to remove it prior to proceeding with the installation?"
 		echo "Note: Prompts will allow you to choose which components should be removed."
@@ -152,13 +152,13 @@ if [[ -e /opt/artemis/forwarder-setup ]]; then
 		if [[ $ANSWER == 'y' ]] || [[ -z $ANSWER ]]; then
 			/opt/artemis/forwarder-setup -u		# Uninstall currently installed instance using old setup file
 		fi
-	elif [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then	# conf file version (currently installed version) matches this file's version
+	elif [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then	# conf file version (currently installed version) matches the version of this file
 		read -p "This version of Artemis is already installed. Would you like to reinstall? [y/N]: " ANSWER && ANSWER=${ANSWER,,}
 		if [[ $ANSWER != 'y' ]]; then
 			echo "Installation aborted."
 			exit 0
 		fi
-	elif (( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) > $VERSION" | bc -l) )) && \	# Currently installed version is greater than this file's version
+	elif (( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) > $VERSION" | bc -l) )) && \	# Currently installed version is greater than the version of this file
 		[[ $(grep Version /opt/artemis/forwarder-setup | head -n1 | cut -d' ' -f3) == $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then # Previous setup matches currently installed version
 		read -p "A newer version of Artemis forwarder is already installed. Would you like to remove it and install this verion [y/N]: " ANSWER && ANSWER=${ANSWER,,}
 		if [[ $ANSWER == 'y' ]]; then
