@@ -109,9 +109,6 @@ if [[ $ANSWER == 'y' ]]; then
 	apt-get -y purge syslog-ng-core > /dev/null 2>&1
 else
 	echo "syslog-ng will not be uninstalled."
-	sed -i '/destination artemis { file("/opt/artemis/logs/artemis-files.log"); };/d' /etc/syslog-ng/syslog-ng.conf
-	sed -i '/log { source(net); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf
-	service syslog-ng restart
 fi
 read -p 'Would you like to uninstall clamav? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
 if [[ $ANSWER == 'y' ]]; then
@@ -165,6 +162,7 @@ rm -rf /opt/artemis/
 if [[ $LOG -eq 1 ]]; then
 	rm /var/log/artemis.err /var/log/virus-scan.log* > /dev/null 2>&1
 fi
+delgroup artemis
 echo "Artemis has been successfully uninstalled"
 }
 
@@ -374,7 +372,7 @@ if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq mys
         # Set a random password for the mysql root account
         mysqladmin -u root -p'password' password "$(date +%s%N | sha256sum | base64 | head -c 32)" > /dev/null 2>&1
 fi
-if ! dpkg --get-selection | grep -v deinstall | awk '{print $1}' | grep -xq openssh-server; then
+if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq openssh-server; then
 	echo "Installing openssh-server.."
 	apt-get -y install openssh-server > /dev/null 2>&1
 fi
@@ -383,6 +381,7 @@ if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -qx sys
 	apt-get -y install syslog-ng-core > /dev/null 2>&1
 fi
 
+if ! grep -q artemis /etc/syslog-ng/syslog-ng.conf; then
 # Configure syslog-ng to receive syslogs from remote hosts
 cat <<EOF >> /etc/syslog-ng/syslog-ng.conf
 
@@ -391,6 +390,7 @@ destination artemis { file("/opt/artemis/logs/artemis-files.log"); };
 log { source(net); destination(artemis); };
 EOF
 service syslog-ng restart
+fi
 
 # Create /etc/artemis.conf
 echo "Generating /etc/artemis.conf..."
@@ -467,4 +467,3 @@ echo "Installation complete"
 echo "Starting Artemis..."
 service artemis start
 exit
-
