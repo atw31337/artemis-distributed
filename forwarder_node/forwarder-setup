@@ -64,7 +64,7 @@ uninstall () {
 
 # Checking for a running instance of artemis-forwarder
 if [[ -n $(pgrep -x artemis-forwarder) ]]; then
-	echo "Shuttind down Artemis-forwarder..."
+	echo "Shutting down Artemis-forwarder..."
 	service artemis-forwarder stop
 fi
 
