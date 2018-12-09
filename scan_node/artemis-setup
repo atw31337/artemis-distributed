@@ -137,7 +137,7 @@ if [[ $ANSWER == 'y' ]]; then
 	if [[ $ANSWER == 'y' ]]; then
 		echo "Removing mysql..."
 		service mysql stop > /dev/null 2>&1
-		apt-get --yess purge mysql* > /dev/null 2>&1
+		apt-get --yes purge mysql* > /dev/null 2>&1
 		apt-get --yes autoremove --purge > /dev/null 2>&1
 		apt-get autoclean > /dev/null 2>&1
 		deluser --remove-home mysql > /dev/null 2>&1
