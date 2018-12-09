@@ -78,7 +78,7 @@ else
 	sed -i '/# Send bro_files syslogs to remote server/d' /etc/syslog-ng/syslog-ng.conf
 	sed -i '/source bro_logs/d' /etc/syslog-ng/syslog-ng.conf
 	sed -i '/destination artemis/d' /etc/syslog-ng/syslog-ng.conf
-	sed -i '/log { source(s_bro_files); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/log { source(bro_logs); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf
 fi
 read -p 'Would you like uninstall inotify-tools? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
 if [[ $ANSWER == 'y' ]]; then
@@ -255,7 +255,7 @@ cat << EOF >> /etc/syslog-ng/syslog-ng.conf
 # Send bro_files syslogs to remote server
 source bro_logs { file("/nsm/bro/logs/current/files.log" flags(no-parse) program_override("bro_files")); };
 destination artemis { udp("$SCANNER" port(514)); };
-log { source(s_bro_files); destination(artemis); };
+log { source(bro_logs); destination(artemis); };
 EOF
 service syslog-ng restart
 fi
