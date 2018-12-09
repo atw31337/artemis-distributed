@@ -73,12 +73,8 @@ fi
 # If the Source/Destination are not located in the archived log either, then wait for the data to be written to the current log
 if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
         for (( i=0; i < 300; i++ )); do # For loop prevents infinite loops caused by log rotation
-                for (( t=0; t < 300; t++ )); do
-			if ! [[ -e /opt/artemis/logs/artemis-files.log ]]; then       # Prevents missing file errors during log rotation
+                while ! [[ -e /opt/artemis/logs/artemis-files.log ]]; do       # Prevents missing file errors during log rotation
 				sleep 0.1
-			else
-				break
-			fi
 		done
 		SOURCE=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
                 DEST=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
