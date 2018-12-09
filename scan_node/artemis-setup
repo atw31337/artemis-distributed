@@ -109,6 +109,10 @@ if [[ $ANSWER == 'y' ]]; then
 	apt-get -y purge syslog-ng-core > /dev/null 2>&1
 else
 	echo "syslog-ng will not be uninstalled."
+	sed -i '/# Receive bro_files syslogs from remote forwarders/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/source net/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/destination artemis/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/log { source(net); destination(artemis); };/d'
 fi
 read -p 'Would you like to uninstall clamav? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
 if [[ $ANSWER == 'y' ]]; then
@@ -385,6 +389,7 @@ if ! grep -q artemis /etc/syslog-ng/syslog-ng.conf; then
 # Configure syslog-ng to receive syslogs from remote hosts
 cat <<EOF >> /etc/syslog-ng/syslog-ng.conf
 
+# Receive bro_files syslogs from remote forwarders
 source net { udp(); };
 destination artemis { file("/opt/artemis/logs/artemis-files.log"); };
 log { source(net); destination(artemis); };
