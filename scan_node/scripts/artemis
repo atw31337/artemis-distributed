@@ -50,7 +50,7 @@ EOF
 
 LogsEntry() {
 SIZE=$(du -b "$1" | awk '{print $1}')
-FILETYPE=$(echo "$3" | cut -d'.' -f2)
+FILETYPE=$(echo "$3" | rev | cut -d'.' -f1 | rev)
 LOGSID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO Logs (DateTime, Hash, FileName, FileSize, FileType) \
 VALUES ('$(echo "$(date +%Y-%m-%d) $(date +%T)")', '$2', '$3', $SIZE, '$FILETYPE'); SELECT LAST_INSERT_ID();")
 }
