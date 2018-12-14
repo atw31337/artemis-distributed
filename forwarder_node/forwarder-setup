@@ -114,21 +114,26 @@ while getopts ":hu" OPT; do
                 exit 0
                 ;;
 	u)
-		if [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
-			uninstall
-		elif [[ -e /opt/artemis/forwarder-setup ]] && [[ $(grep Version /opt/artemis/forwarder-setup | head -n1 | cut -d' ' -f3) \
-		== $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then
-			/opt/artemis/forwarder-setup -u
-		else
-			read -p "Uninstaller version mismatch. Would you like to proceed with uninstallation anyway? [y/N]: " ANSWER && ANSWER=${ANSWER,,}
-			if [[ $ANSWER == 'y' ]]; then
+		if [[ -e /etc/artemis.conf ]]; then
+			if [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
 				uninstall
+			elif [[ -e /opt/artemis/forwarder-setup ]] && [[ $(grep Version /opt/artemis/forwarder-setup | head -n1 | cut -d' ' -f3) \
+			== $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then
+				/opt/artemis/forwarder-setup -u
 			else
-				echo "Installation aborted"
-				exit 1
+				read -p "Uninstaller version mismatch. Would you like to proceed with uninstallation anyway? [y/N]: " ANSWER && ANSWER=${ANSWER,,}
+				if [[ $ANSWER == 'y' ]]; then
+					uninstall
+				else
+					echo "Uninstallation aborted"
+				fi
 			fi
+			exit 0
+		else
+			echo "Artemis installation not found."
+			echo "Uninstallation aborted"
+			exit 1
 		fi
-		exit 0
 		;;
 	\?)
 		echo "Invalid option: -$OPTARG"
