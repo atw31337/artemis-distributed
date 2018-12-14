@@ -109,7 +109,7 @@ if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
 		while ! [[ -e /opt/artemis/logs/artemis-files.log ]]; do       # Prevents missing file errors during log rotation
                                 sleep 0.1
 				((counter++))
-				if [[ counter -ge 300 ]]; then	# Prevents an inifinite while loop
+				if [[ $counter -ge 300 ]]; then	# Prevents an inifinite while loop
 					break 2
 				fi
                 done
