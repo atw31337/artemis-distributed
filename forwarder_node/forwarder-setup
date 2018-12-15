@@ -92,7 +92,7 @@ echo "Removing files..."
 rm /usr/bin/artemis-forwarder /usr/sbin/artemisFInit /lib/systemd/system/artemis-forwarder.service /var/log/artemis.err > /dev/null 2>&1
 rm -r /opt/artemis/ > /dev/null 2>&1
 # Remove ssh key pair
-keygen -f "/root/.ssh/known_hosts" -R $(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)
+ssh-keygen -f "/root/.ssh/known_hosts" -R $(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)
 rm /root/.ssh/artemis /root/.ssh/artemis.pub > /dev/null 2>&1
 rm /etc/artemis.conf > /dev/null 2>&1
 
@@ -199,7 +199,7 @@ read -p 'Enter the path of the directory to be monitored by Artemis [/nsm/bro/ex
 		SDIR="/nsm/bro/extracted/"
 	fi
 while [[ -z $SCANNER ]]; do
-	read -p 'Enter the FQDN of the scanner node: ' SCANNER
+	read -p 'Enter the FQDN (or IP) of the scanner node: ' SCANNER
 	if [[ -z $SCANNER ]]; then
 		echo "Invalid response. Try again."
 	fi
