@@ -112,7 +112,7 @@ else
 	sed -i '/# Receive bro_files syslogs from remote forwarders/d' /etc/syslog-ng/syslog-ng.conf
 	sed -i '/source net/d' /etc/syslog-ng/syslog-ng.conf
 	sed -i '/destination artemis/d' /etc/syslog-ng/syslog-ng.conf
-	sed -i '/log { source(net); destination(artemis); };/d'
+	sed -i '/log { source(net); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf
 fi
 read -p 'Would you like to uninstall clamav? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
 if [[ $ANSWER == 'y' ]]; then
