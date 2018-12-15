@@ -60,7 +60,7 @@ else
 	FILETYPE=""
 fi
 LOGSID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO Logs (DateTime, Hash, FileName, FileSize, FileType) \
-VALUES ('$(echo "$(date +%Y-%m-%d) $(date +%T)")', '$2', '$3', $SIZE, '$FILETYPE'); SELECT LAST_INSERT_ID();")
+VALUES ('$(date +%Y-%m-%d) $(date +%T)', '$2', '$3', $SIZE, '$FILETYPE'); SELECT LAST_INSERT_ID();")
 }
 
 sendAlert() {
@@ -130,7 +130,7 @@ fi
 
 prescan() {
 if [[ -e $1 ]] && [[ -s $1 ]]; then    # Check that file length is nonzero
-	TSTAMP=$(echo "$(date +%Y-%m-%d) $(date +%T)")
+	TSTAMP="$(date +%Y-%m-%d) $(date +%T)"
 	file_integrity_chk "$1"
 	HASH=$(sha256sum "$1" | awk '{ print $1 }')
 	FILENAME=$(basename "$1")      # File name only
