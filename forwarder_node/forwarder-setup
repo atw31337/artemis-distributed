@@ -289,8 +289,10 @@ cp ./forwarder-setup /opt/artemis/
 systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
 
 # Generate ssh key pair
-echo "Generating ssh key pair..."
-ssh-keygen -t rsa -N "" -f /root/.ssh/artemis > /dev/null 2>&1
+if ! [[ -e /root/.ssh/artemis ]]; then
+	echo "Generating ssh key pair..."
+	ssh-keygen -t rsa -N "" -f /root/.ssh/artemis > /dev/null 2>&1
+fi
 
 echo "Enter the username of the account that should be used to connect to the scanner node."
 read -p "The account must have sudo privileges during installation: " USERNAME
