@@ -78,8 +78,8 @@ rm -f "$TFILE"
 
 file_integrity_chk() {         # checks and, if necessary, waits for a file to finish being written to disk
 local hash
-while [[ "$(sha256sum $1 | cut -d' ' -f1)" != "$hash" ]]; do
-        hash="$(sha256sum $1 | cut -d' ' -f1)"
+while [[ $(sha256sum "$1" | cut -d' ' -f1) != "$hash" ]]; do
+        hash=$(sha256sum "$1" | cut -d' ' -f1)
         sleep 0.1
 done
 }
@@ -87,19 +87,19 @@ done
 getSrcDst() {
 # Check the current log
 if [[ -e /opt/artemis/logs/artemis-files.log ]]; then
-        SOURCE=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
-        DEST=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+        SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+        DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
 fi
 
 # If the Source/Destination are not located there, check the most recently archived log file
 if [[ -z $SOURCE ]] || [[ -z $DEST ]] && [[ -f /opt/artemis/logs/artemis-files.log.1.gz ]]; then
         TEMPID=$(date +%s%N)
         file_integrity_chk /opt/artemis/logs/artemis-files.log.1.gz # Ensure that the file has been completely written to disk during log rotation before proceeding
-        cp /opt/artemis/logs/artemis-files.log.1.gz /tmp/artemis/$TEMPID.temp.gz
-        gzip -d /tmp/artemis/$TEMPID.temp.gz
-        SOURCE=$(grep $FILENAME /tmp/artemis/$TEMPID.temp | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
-        DEST=$(grep $FILENAME /tmp/artemis/$TEMPID.temp | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
-        rm /tmp/artemis/$TEMPID.temp
+        cp /opt/artemis/logs/artemis-files.log.1.gz /tmp/artemis/"$TEMPID".temp.gz
+        gzip -d /tmp/artemis/"$TEMPID".temp.gz
+        SOURCE=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+        DEST=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+        rm /tmp/artemis/"$TEMPID".temp
 fi
 
 # If the Source/Destination are not located in the archived log either, then wait for the data to be written to the current log
@@ -113,8 +113,8 @@ if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
 					break 2
 				fi
                 done
-                SOURCE=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
-                DEST=$(grep $FILENAME /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+                SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+                DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
                 if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
                         sleep 1
                 else
@@ -128,12 +128,12 @@ fi
 prescan() {
 if [[ -e $1 ]] && [[ -s $1 ]]; then    # Check that file length is nonzero
 	TSTAMP=$(echo "$(date +%Y-%m-%d) $(date +%T)")
-	file_integrity_chk $1
+	file_integrity_chk "$1"
 	HASH=$(sha256sum "$1" | awk '{ print $1 }')
 	FILENAME=$(basename "$1")      # File name only
 	LogsEntry "$1" "$HASH" "$FILENAME"
 	HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$HASH' LIMIT 1;")
-	if grep -qw $HASH $LISTLOC/blacklist; then	# Compare the hash against the blacklist
+	if grep -qw "$HASH" "$LISTLOC"/blacklist; then	# Compare the hash against the blacklist
 		getSrcDst
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4, Source='$SOURCE', Desintation='$DEST' WHERE EntryID=$LOGSID;"
 		if [[ -n $IDIR ]]; then
@@ -141,7 +141,7 @@ if [[ -e $1 ]] && [[ -s $1 ]]; then    # Check that file length is nonzero
                 	chmod 600 "$IDIR$FILENAME"
 		fi
 		sendAlert
-	elif grep -qw $HASH $LISTLOC/whitelist; then   # Compare the hash against the whitelist
+	elif grep -qw "$HASH" "$LISTLOC"/whitelist; then   # Compare the hash against the whitelist
                 getSrcDst
                 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=3, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
 	elif [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
@@ -158,7 +158,7 @@ if [[ -e $1 ]] && [[ -s $1 ]]; then    # Check that file length is nonzero
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Queued=$QUEUED, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Hits=Hits+1, TimeStamp=$(date +%s%N) WHERE HashID=$HASHID;"
 		if [[ $RESULT == "NULL" ]]; then
-			echo $LOGSID >> /opt/artemis/cache/$HASH
+			echo "$LOGSID" >> /opt/artemis/cache/"$HASH"
 		else	# Result is present in the Cache table
 
 			# Update the result in the Logs table
@@ -233,11 +233,11 @@ done
 shift "$OPTIND"
 
 # Get variables from artemis.conf
-EMAIL=$(grep EMAIL $CONF | cut -d'=' -f2)
-DIR=$(grep SDIR $CONF | cut -d'=' -f2)
-IDIR=$(grep IDIR $CONF | cut -d'=' -f2)
-MAXPROC=$(grep MAXPROC $CONF | cut -d'=' -f2)
-MAXHASH=$(grep MAXHASH $CONF | cut -d'=' -f2)
+EMAIL=$(grep EMAIL "$CONF" | cut -d'=' -f2)
+DIR=$(grep SDIR "$CONF" | cut -d'=' -f2)
+IDIR=$(grep IDIR "$CONF" | cut -d'=' -f2)
+MAXPROC=$(grep MAXPROC "$CONF" | cut -d'=' -f2)
+MAXHASH=$(grep MAXHASH "$CONF" | cut -d'=' -f2)
 
 # Check that all variables contain values
 if [[ -z "$DIR" ]] || [[ -z "$MAXPROC" ]] || [[ -z "$MAXHASH" ]] || [[ -z "$EMAIL" ]]; then
