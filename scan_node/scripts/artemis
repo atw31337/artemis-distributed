@@ -53,6 +53,9 @@ SIZE=$(du -b "$1" | awk '{print $1}')
 # If the filename contains a . then set the last extension as the filetype; otherwise make the filetype blank
 if echo "$3" | grep -q "\."; then
 	FILETYPE=$(echo "$3" | rev | cut -d'.' -f1 | rev)
+	if [[ ${#FILETYPE} -gt 5 ]]; then
+		FILETYPE=$(echo "$FILETYPE" | head -c5)
+	fi
 else
 	FILETYPE=""
 fi
