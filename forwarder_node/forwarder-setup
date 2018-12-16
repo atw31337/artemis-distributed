@@ -92,7 +92,7 @@ echo "Removing files..."
 rm /usr/bin/artemis-forwarder /usr/sbin/artemisFInit /lib/systemd/system/artemis-forwarder.service /var/log/artemis.err > /dev/null 2>&1
 rm -r /opt/artemis/ > /dev/null 2>&1
 # Remove ssh key pair
-ssh-keygen -f "/root/.ssh/known_hosts" -R $(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)
+ssh-keygen -f "/root/.ssh/known_hosts" -R $(grep SCANNER /etc/artemis.conf | cut -d'=' -f2) > /dev/null 2>&1
 rm /root/.ssh/artemis /root/.ssh/artemis.pub > /dev/null 2>&1
 rm /etc/artemis.conf > /dev/null 2>&1
 
