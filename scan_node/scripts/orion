@@ -230,7 +230,7 @@ for (( ; ; )); do
                 LOGSID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT LogsID FROM Queue WHERE FileID=$FILEID;")
 		ENTRYTIME=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT EntryTime FROM Queue WHERE FileID=$FILEID;")
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Queue WHERE FileID=$FILEID;"
-                while [[ $(find /opt/artemis/cache/workers/ | wc -l) -ge $MAXPROC ]]; do
+                while [[ $(ls -A /opt/artemis/cache/workers/ | wc -l) -ge $MAXPROC ]]; do
                         sleep 0.05
                 done
 		filescan "$FILE" &
