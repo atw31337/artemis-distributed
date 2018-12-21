@@ -63,7 +63,7 @@ chmod 600 /etc/artemis.conf
 uninstall () {
 
 # Checking for a running instance of artemis-forwarder
-if [[ -n $(pgrep -x artemis-forwarder) ]]; then
+if [[ -n $(pgrep -x artemis-forward) ]]; then
 	echo "Shutting down Artemis-forwarder..."
 	service artemis-forwarder stop
 fi
@@ -207,7 +207,7 @@ done
 
 
 # Check for a running instanace of Artemis forwarder
-if [[ -n $(pgrep -x artemis-forwarder) ]]; then
+if [[ -n $(pgrep -x artemis-forward) ]]; then
         echo "Shutting down Artemis forwarder..."
         service artemis-fowarder stop
 fi
