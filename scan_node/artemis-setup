@@ -166,7 +166,6 @@ rm -rf /opt/artemis/
 if [[ $LOG -eq 1 ]]; then
 	rm /var/log/artemis.err /var/log/virus-scan.log* > /dev/null 2>&1
 fi
-delgroup artemis
 echo "Artemis has been successfully uninstalled"
 }
 
