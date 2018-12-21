@@ -129,50 +129,47 @@ fi
 
 
 prescan() {
-if [[ -e $1 ]] && [[ -s $1 ]]; then    # Check that file length is nonzero
-	TSTAMP="$(date +%Y-%m-%d) $(date +%T)"
-	file_integrity_chk "$1"
-	HASH=$(sha256sum "$1" | awk '{ print $1 }')
-	FILENAME=$(basename "$1")      # File name only
-	LogsEntry "$1" "$HASH" "$FILENAME"
-	HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$HASH' LIMIT 1;")
-	if grep -qw "$HASH" "$LISTLOC"/blacklist; then	# Compare the hash against the blacklist
-		getSrcDst
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4, Source='$SOURCE', Desintation='$DEST' WHERE EntryID=$LOGSID;"
-		if [[ -n $IDIR ]]; then
-                	mv "$DIR$FILENAME" "$IDIR$FILENAME"
-                	chmod 600 "$IDIR$FILENAME"
-		fi
-		sendAlert
-	elif grep -qw "$HASH" "$LISTLOC"/whitelist; then   # Compare the hash against the whitelist
-                getSrcDst
-                mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=3, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
-	elif [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
-		QUEUED=1
-		ENTRYTIME="$(date +%s).$(date +%N | head -c3)"
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO Queue (FileName, TimeStamp, LogsID, EntryTime) VALUES ('$1', '$TSTAMP', $LOGSID, $ENTRYTIME);"
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Queued=$QUEUED WHERE EntryID=$LOGSID;"
-	else	# Hash is present in the Cache table
-		SCANNED=0
-		QUEUED=0
-		getSrcDst
-		RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
-		# Update the Logs and Cache table entries
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Queued=$QUEUED, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Hits=Hits+1, TimeStamp=$(date +%s%N) WHERE HashID=$HASHID;"
-		if [[ $RESULT == "NULL" ]]; then
-			echo "$LOGSID" >> /opt/artemis/cache/"$HASH"
-		else	# Result is present in the Cache table
-
-			# Update the result in the Logs table
-                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
-			if [[ $RESULT -eq 1 ]]; then
-				if [[ -n $IDIR ]]; then
-					mv "$DIR$FILENAME" "$IDIR$FILENAME"
-					chmod 600 "$IDIR$FILENAME"
-				fi
-				sendAlert
+TSTAMP="$(date +%Y-%m-%d) $(date +%T)"
+file_integrity_chk "$1"
+HASH=$(sha256sum "$1" | awk '{ print $1 }')
+FILENAME=$(basename "$1")      # File name only
+LogsEntry "$1" "$HASH" "$FILENAME"
+HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$HASH' LIMIT 1;")
+if grep -qw "$HASH" "$LISTLOC"/blacklist; then	# Compare the hash against the blacklist
+	getSrcDst
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4, Source='$SOURCE', Desintation='$DEST' WHERE EntryID=$LOGSID;"
+	if [[ -n $IDIR ]]; then
+               	mv "$DIR$FILENAME" "$IDIR$FILENAME"
+               	chmod 600 "$IDIR$FILENAME"
+	fi
+	sendAlert
+elif grep -qw "$HASH" "$LISTLOC"/whitelist; then   # Compare the hash against the whitelist
+	getSrcDst
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=3, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
+elif [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
+	QUEUED=1
+	ENTRYTIME="$(date +%s).$(date +%N | head -c3)"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO Queue (FileName, TimeStamp, LogsID, EntryTime) VALUES ('$1', '$TSTAMP', $LOGSID, $ENTRYTIME);"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Queued=$QUEUED WHERE EntryID=$LOGSID;"
+else	# Hash is present in the Cache table
+	SCANNED=0
+	QUEUED=0
+	getSrcDst
+	RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
+	# Update the Logs and Cache table entries
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Queued=$QUEUED, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Hits=Hits+1, TimeStamp=$(date +%s%N) WHERE HashID=$HASHID;"
+	if [[ $RESULT == "NULL" ]]; then
+		echo "$LOGSID" >> /opt/artemis/cache/"$HASH"
+	else	# Result is present in the Cache table
+		# Update the result in the Logs table
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
+		if [[ $RESULT -eq 1 ]]; then
+			if [[ -n $IDIR ]]; then
+				mv "$DIR$FILENAME" "$IDIR$FILENAME"
+				chmod 600 "$IDIR$FILENAME"
 			fi
+			sendAlert
 		fi
 	fi
 fi
