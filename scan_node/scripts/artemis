@@ -295,12 +295,7 @@ umount /opt/artemis/cache/
 rm -rf /opt/artemis/cache/
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Logs WHERE Result IS NULL;"
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Result IS NULL;"
-if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Queue;") -ne 0 ]]; then
-        read -p 'Some files are still queued to be scanned. Would you like to remove these files from the queue before stopping? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-        if [[ $ANSWER == 'y' ]]; then
-                mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE Queue;"
-        fi
-fi
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE Queue;"
 if [[ -d /tmp/artemis/ ]]; then
 	rm -rf /tmp/artemis/
 fi
