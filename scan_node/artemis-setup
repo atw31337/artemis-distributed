@@ -281,7 +281,7 @@ fi
 # If non-interactive mode is selected, verify the integrity of the answer file and retrieve config variables.
 if [[ $MODE -eq 1 ]];then
         if grep -q MYDOMAIN= "$AFILE" && grep -q RELAYHOST= "$AFILE" && grep -q MAXPROC= "$AFILE" && grep -q MAXHASH= "$AFILE" \
-        && grep -q IDIR= "$AFILE" && grep -q EMAIL= "$AFILE" && grep -q && grep -q LOGSDATA= "$AFILE"; then
+        && grep -q IDIR= "$AFILE" && grep -q EMAIL= "$AFILE" && grep -q LOGSDATA= "$AFILE"; then
                 MYDOMAIN=$(grep MYDOMAIN "$AFILE" | cut -d'=' -f2)
                 RELAYHOST=$(grep RELAYHOST "$AFILE" | cut -d'=' -f2)
                 MAXPROC=$(grep MAXPROC "$AFILE" | cut -d'=' -f2)
