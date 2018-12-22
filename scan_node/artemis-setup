@@ -437,6 +437,7 @@ if ! [[ -d /opt/artemis/extracted/ ]]; then
 fi
 cp ./artemis-setup /opt/artemis/
 cp ./scripts/artemis /usr/bin/artemis
+cp ./scripts/extract-cleanup /usr/bin/extract-cleanup
 cp ./scripts/artemis-logfile-cleanup /usr/bin/artemis-logfile-cleanup
 cp ./scripts/artemis-brolog-cleanup /usr/bin/artemis-brolog-cleanup
 cp ./scripts/artemis-logRepair /usr/bin/artemis-logRepair
@@ -447,6 +448,7 @@ cp ./scripts/artemis-logstable-cleanup /usr/bin/artemis-logstable-cleanup
 cp ./scripts/parsOpts.sh /opt/artemis/
 cp ./scripts/artemisInit /usr/sbin/artemisInit
 
+cp ./conf/extract-cleanup-cron /etc/cron.d/extract-cleanup-cron
 cp ./conf/artemis-brolog-cron /etc/cron.d/artemis-brolog-cron
 cp ./conf/artemis-logfile-cron /etc/cron.d/artemis-logfile-cron
 cp ./conf/artemis-logstable-cron /etc/cron.d/artemis-logstable-cron
