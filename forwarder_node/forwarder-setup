@@ -260,9 +260,10 @@ if ! grep -q artemis /etc/syslog-ng/syslog-ng.conf; then
 cat << EOF >> /etc/syslog-ng/syslog-ng.conf
 
 # Send bro_files syslogs to remote server
-source bro_logs { file("/nsm/bro/logs/current/files.log" flags(no-parse) program_override("bro_files")); };
-destination artemis { udp("$SCANNER" port(514)); };
-log { source(bro_logs); destination(artemis); };
+filter f_ext { message("EXTRACT"); };
+source s_bro_logs { file("/nsm/bro/spool/manager/files.log" flags(no-parse) program_override("bro_files")); };
+destination d_artemis { udp("SCANNER" port(514)); };
+log { source(s_bro_logs); filter(f_ext); destination(d_artemis); };
 EOF
 service syslog-ng restart
 fi
