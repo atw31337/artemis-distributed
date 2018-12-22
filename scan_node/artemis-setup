@@ -395,9 +395,9 @@ if ! grep -q artemis /etc/syslog-ng/syslog-ng.conf; then
 cat <<EOF >> /etc/syslog-ng/syslog-ng.conf
 
 # Receive bro_files syslogs from remote forwarders
-source net { udp(); };
-destination artemis { file("/opt/artemis/logs/artemis-files.log"); };
-log { source(net); destination(artemis); };
+source s_net { udp(); };
+destination d_artemis { file("/opt/artemis/logs/artemis-files.log"); };
+log { source(s_net); destination(d_artemis); };
 EOF
 service syslog-ng restart
 fi
