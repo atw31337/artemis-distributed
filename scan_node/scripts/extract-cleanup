@@ -1,0 +1,15 @@
+#!/bin/bash
+# Title: extract-cleanup
+# Description: When called by cron this script will check the percentage of used disk space and delete files from /opt/artemis/extracted, starting with the oldest first, 
+# until the disk usage is below the specified amount.
+# Author: Andrew T. Withers (atw31337@gmail.com)
+
+THRESHOLD=80
+
+while [[ $(df -k | grep -w / | awk '{print $5}' | tr -d %) -ge $THRESHOLD ]]; do
+	rm /opt/artemis/extracted/$(ls -tr /opt/artemis/extracted/ | head -n1)
+done
+
+exit
+ 
+
