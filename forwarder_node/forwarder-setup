@@ -76,9 +76,11 @@ if [[ $ANSWER == 'y' ]]; then
 else
 	echo "syslog-ng will not be uninstalled."
 	sed -i '/# Send bro_files syslogs to remote server/d' /etc/syslog-ng/syslog-ng.conf
-	sed -i '/source bro_logs/d' /etc/syslog-ng/syslog-ng.conf
-	sed -i '/destination artemis/d' /etc/syslog-ng/syslog-ng.conf
-	sed -i '/log { source(bro_logs); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/filter f_ext/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/source s_bro_logs/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/destination d_artemis/d' /etc/syslog-ng/syslog-ng.conf
+	sed -i '/log { source(s_bro_logs); filter(f_ext); destination(d_artemis); };/d' /etc/syslog-ng/syslog-ng.conf
+	service syslog-ng restart
 fi
 read -p 'Would you like uninstall inotify-tools? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
 if [[ $ANSWER == 'y' ]]; then
