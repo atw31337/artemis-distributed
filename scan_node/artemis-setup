@@ -80,30 +80,30 @@ if [[ -n $(pgrep -x artemis) ]]; then
 	echo "Shutting down Artemis..."
 	service artemis stop
 fi
-read -p 'Would you like to uninstall bc? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like to uninstall bc? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing bc..."
 	apt-get -y  purge bc > /dev/null 2>&1
 else
 	echo "bc will not be uninstalled."
 fi
-read -p 'Would you like to uninstall postfix? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like to uninstall postfix? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing postfix..."
         service postfix stop
 	apt-get -y purge postfix > /dev/null 2>&1
 else
 	echo "postfix will not be uninstalled."
 fi
-read -p 'Would you like to uninstall inotify-tools? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like to uninstall inotify-tools? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing inotify-tools..."
         apt-get -y purge inotify-tools > /dev/null 2>&1
 else
 	echo "inotify-tools will not be uninstalled."
 fi
-read -p 'Would you like to uninstall syslog-ng? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like to uninstall syslog-ng? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing syslog-ng..."
 	service syslog-ng stop
 	apt-get -y purge syslog-ng-core > /dev/null 2>&1
@@ -114,27 +114,27 @@ else
 	sed -i '/destination artemis/d' /etc/syslog-ng/syslog-ng.conf
 	sed -i '/log { source(net); destination(artemis); };/d' /etc/syslog-ng/syslog-ng.conf
 fi
-read -p 'Would you like to uninstall clamav? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like to uninstall clamav? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing clamav..."
 	apt-get -y purge "$(dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep clamav)" > /dev/null 2>&1
 else
 	echo "clamav will not be uninstalled."
 fi
-read -p 'Would you like to uninstall openssh-server [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like to uninstall openssh-server [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing openssh-server..."
 	service ssh stop
 	apt-get -y purge openssh-server > /dev/null 2>&1
 else
 	echo "openssh-server will not be uninstalled."
 fi
-read -p 'Would you like to remove the Artemis database? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like to remove the Artemis database? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing Artemis database..."
 	mysql --defaults-file=/etc/mysql/debian.cnf -e "DROP DATABASE artemis;"
-	read -p 'Would you like to uninstall mysql? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-	if [[ $ANSWER == 'y' ]]; then
+	read -p 'Would you like to uninstall mysql? [y/N]: ' ANSWER
+	if [[ ${ANSWER,,} == 'y' ]]; then
 		echo "Removing mysql..."
 		service mysql stop > /dev/null 2>&1
 		apt-get --yes purge mysql* > /dev/null 2>&1
@@ -148,8 +148,8 @@ if [[ $ANSWER == 'y' ]]; then
 else
 	echo "The Artemis database will not be removed."
 fi
-read -p 'Would you like to remove all Artemis log files? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like to remove all Artemis log files? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	LOG=1
 else
 	echo "Log files will be retained."
@@ -245,19 +245,19 @@ if [[ -e /opt/artemis/artemis-setup ]]; then
                 echo "Would you like to remove it prior to proceeding with the installation?"
                 echo "Note: Prompts will allow you to choose which components should be removed."
                 read -p "[Y/n]: " SELECTION
-                if [[ $SELECTION == "y" ]] || [[ $SELECTION == "Y" ]] || [[ $SELECTION == "" ]]; then
+                if [[ ${SELECTION,,} == "y" ]] || [[ -z $SELECTION ]]; then
                         /opt/artemis/artemis-setup -u
                 fi
         elif [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
                 read -p "This version of Artemis is already installed. Would you like to reinstall? [y/N]: " SELECTION
-                if  [[ $SELECTION != "y" ]] && [[ $SELECTION != "Y" ]]; then
+                if  [[ ${SELECTION,,} != "y" ]]; then
                         echo "Installation aborted."
 			exit 0
                 fi
         elif (( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) > $VERSION" | bc -l) )) && \
 		[[ $(grep Version /opt/artemis/artemis-setup | head -n1 | cut -d' ' -f3) == $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then
                 read -p "A newer version of Artemis is already installed. Would you like to remove it and install this version? [y/N]: " SELECTION
-                if  [[ $SELECTION == "y" ]] || [[ $SELECTION == "Y" ]]; then
+                if  [[ ${SELECTION,,} == "y" ]]; then
                         /opt/artemis/artemis-setup -u
                 else
                         echo "Installation aborted."
@@ -266,11 +266,11 @@ if [[ -e /opt/artemis/artemis-setup ]]; then
 	else
 		echo "A different version of Artemis has been detected; however, no corresponding version of the install/uninstall script can be found."
                 read -p  "Would you like to attempt to uninstall the previous version before continuing? [y/N]: " SELECTION
-                if [[ $SELECTION == "y" ]] || [[ $SELECTION == "Y" ]]; then
+                if [[ ${SELECTION,,} == "y" ]]; then
                         /opt/artemis/artemis-setup -u
                 else
 			read -p "Would you like to proceed with installation? [y/N]: " SELECTION
-			if [[ $SELECTION != "y" ]] && [[ $SELECTION != "Y" ]]; then
+			if [[ ${SELECTION,,} != "y" ]]; then
 				echo "Installation aborted."
 				exit 0
 			fi

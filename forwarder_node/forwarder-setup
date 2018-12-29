@@ -68,8 +68,8 @@ if [[ -n $(pgrep -x artemis-forward) ]]; then
 	service artemis-forwarder stop
 fi
 
-read -p 'Would you like to uninstall syslog-ng? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like to uninstall syslog-ng? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing syslog-ng..."
 	service syslog-ng stop
 	apt-get -y purge syslog-ng-core > /dev/null 2>&1
@@ -82,8 +82,8 @@ else
 	sed -i '/log { source(s_bro_logs); filter(f_ext); destination(d_artemis); };/d' /etc/syslog-ng/syslog-ng.conf
 	service syslog-ng restart
 fi
-read -p 'Would you like uninstall inotify-tools? [y/N]: ' ANSWER && ANSWER=${ANSWER,,}
-if [[ $ANSWER == 'y' ]]; then
+read -p 'Would you like uninstall inotify-tools? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing inotify-tools..."
 	apt-get -y purge inotify-tools > /dev/null 2>&1
 else
@@ -125,8 +125,8 @@ while getopts ":hu" OPT; do
 			== $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then
 				/opt/artemis/forwarder-setup -u
 			else
-				read -p "Uninstaller version mismatch. Would you like to proceed with uninstallation anyway? [y/N]: " ANSWER && ANSWER=${ANSWER,,}
-				if [[ $ANSWER == 'y' ]]; then
+				read -p "Uninstaller version mismatch. Would you like to proceed with uninstallation anyway? [y/N]: " ANSWER
+				if [[ ${ANSWER,,} == 'y' ]]; then
 					uninstall
 				else
 					echo "Uninstallation aborted"
@@ -162,20 +162,20 @@ if [[ -e /opt/artemis/forwarder-setup ]]; then
 		echo "A previous version of Artemis forwarder has been detected."
 		echo "Would you like to remove it prior to proceeding with the installation?"
 		echo "Note: Prompts will allow you to choose which components should be removed."
-		read -p "[Y/n]: " ANSWER && ANSWER=${ANSWER,,}
-		if [[ $ANSWER == 'y' ]] || [[ -z $ANSWER ]]; then
+		read -p "[Y/n]: " ANSWER
+		if [[ ${ANSWER,,} == 'y' ]] || [[ -z $ANSWER ]]; then
 			/opt/artemis/forwarder-setup -u
 		fi
 	elif [[ $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) == "$VERSION" ]]; then
-		read -p "This version of Artemis is already installed. Would you like to reinstall? [y/N]: " ANSWER && ANSWER=${ANSWER,,}
-		if [[ $ANSWER != 'y' ]]; then
+		read -p "This version of Artemis is already installed. Would you like to reinstall? [y/N]: " ANSWER
+		if [[ ${ANSWER,,} != 'y' ]]; then
 			echo "Installation aborted."
 			exit 0
 		fi
 	elif (( $(echo "$(grep VERSION /etc/artemis.conf | cut -d'=' -f2) > $VERSION" | bc -l) )) && \
 		[[ $(grep Version /opt/artemis/forwarder-setup | head -n1 | cut -d' ' -f3) == $(grep VERSION /etc/artemis.conf | cut -d'=' -f2) ]]; then
-		read -p "A newer version of Artemis forwarder is already installed. Would you like to remove it and install this verion [y/N]: " ANSWER && ANSWER=${ANSWER,,}
-		if [[ $ANSWER == 'y' ]]; then
+		read -p "A newer version of Artemis forwarder is already installed. Would you like to remove it and install this verion [y/N]: " ANSWER
+		if [[ ${ANSWER,,} == 'y' ]]; then
 			/opt/artemis/forwarder-setup -u
 		else
 			echo "Installation aborted."
@@ -183,12 +183,12 @@ if [[ -e /opt/artemis/forwarder-setup ]]; then
 		fi
 	else
 		 echo "A different version of Artemis has been detected; however, no corresponding version of the install/uninstall script can be found."
-		read -p "Would you like to attempt to uninstall the previous version before continuing? [y/N]: " ANSWER && ANSWER=${ANSWER,,}
-		if [[ $ANSWER == 'y' ]]; then
+		read -p "Would you like to attempt to uninstall the previous version before continuing? [y/N]: " ANSWER
+		if [[ ${ANSWER,,} == 'y' ]]; then
 				/opt/artemis/forwarder-setup -u
 		else
-			read -p "Would you like to proceed with installation? [y/N]: " ANSWER && ANSWER=${ANSWER,,}
-                        if [[ $ANSWER != "y" ]]; then
+			read -p "Would you like to proceed with installation? [y/N]: " ANSWER
+                        if [[ ${ANSWER,,} != "y" ]]; then
                                 echo "Installation aborted."
                                 exit 0
                         fi
