@@ -202,7 +202,7 @@ while getopts ":huf:" OPT; do
 				/opt/artemis/artemis-setup -u
 			else
 				read -p "Uninstaller version mismatch. Would you like to proceed with uninstallation anyway? [y/N]: " SELECT
-				if [[ $SELECT == 'y' ]] || [[ $SELECT == 'Y' ]]; then
+				if [[ ${SELECT,,} == 'y' ]]; then
 					uninstall
 				else
 					echo "Uninstallion aborted"
