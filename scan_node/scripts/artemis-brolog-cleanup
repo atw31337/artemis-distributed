@@ -36,8 +36,6 @@ for (( i=5; i>0; i-- )); do	# Determine the number of the oldest archived file
 done
 # Move the current log file to the first archived position
 mv /opt/artemis/logs/artemis-files.log /opt/artemis/logs/artemis-files.log.1
-# Remove entries in the log for files that were not extracted by Bro in order to minimize log file storage size
-sed -i '/extracted/!d' /opt/artemis/logs/artemis-files.log.1
 # Zip the most recent archived log
 gzip /opt/artemis/logs/artemis-files.log.1
 exit
