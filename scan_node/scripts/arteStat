@@ -26,6 +26,7 @@ cat <<EOF
 
 arteStat - Artemis statistical report generator
 Usage: arteStat [OPTION]...
+If no option is used, the report period will default to the previous 24 hours
 
 	Report Period Options:
 		-D <YYYY-MM-HH>		Specific date
@@ -163,6 +164,13 @@ if [[ $AQT != 'NULL' ]]; then
 	echo "Average Queue Time: $AQT s"
 else
 	echo "Average Queue Time: not enough data"
+fi
+echo
+LQT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT QTime FROM Logs ORDER BY QTime DESC LIMIT 1;")
+if [[ -n $LQT ]] && [[ $LQT != 'NULL' ]]; then
+	echo "Longest Queue Time: $LQT s"
+else
+	echo "Longest Queue Time: No files were queued"
 fi
 echo
 echo "Total Files by File Type:"
