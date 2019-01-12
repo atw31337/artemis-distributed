@@ -211,7 +211,7 @@ done
 # Check for a running instanace of Artemis forwarder
 if [[ -n $(pgrep -x artemis-forward) ]]; then
         echo "Shutting down Artemis forwarder..."
-        service artemis-fowarder stop
+        service artemis-forwarder stop
 fi
 
 echo "Installing Artemis forwarder..."
