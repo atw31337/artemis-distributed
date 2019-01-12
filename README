@@ -149,6 +149,7 @@ If no Time option is selected or if it is placed after the Query option, the tim
 
 arteStat - Artemis statistical report generator
 Usage: arteStat [OPTION]...
+If no option is used, the report period will default to the previous 24 hours
 
         Report Period Options:
                 -D <YYYY-MM-HH>         Specific date
