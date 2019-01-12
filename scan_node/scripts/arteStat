@@ -166,8 +166,8 @@ else
 	echo "Average Queue Time: not enough data"
 fi
 echo
-LQT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT QTime FROM Logs ORDER BY QTime DESC LIMIT 1;")
-if [[ -n $LQT ]] && [[ $LQT != 'NULL' ]]; then
+LQT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT QTime FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND QTime IS NOT NULL ORDER BY QTime DESC LIMIT 1;")
+if [[ -n $LQT ]]; then
 	echo "Longest Queue Time: $LQT s"
 else
 	echo "Longest Queue Time: No files were queued"
