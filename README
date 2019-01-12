@@ -69,20 +69,20 @@
 	*Remove this account from sudo after all forwarder nodes have been installed.
 		sudo deluser artemis sudo 
 
-# Scanning node installation
+# Scanning node installation:
 	Note: The scanning node must be installed prior to installing any forwarder nodes.
 	The scanner node installation can be performed interactively by following the
 	prompts or automatically by using an answer file. An answer file template, 
-	install.conf, is located in the conf directory as install.conf. Copy this file 
-	and edit each field with the appropriate configurations. Run an automatic 
-	installation using -f option and the location of the answer file.
+	install.conf, is located in the conf directory. Copy this file	and edit each 
+	field with the appropriate configurations. Run an automatic installation using 
+	-f option and the location of the answer file.
 		./artemis-setup -f <answer file path>
 	Alternatively, perform an interactive installation by running the installer
 	without any options.
 		./artemis-setup
 	You will be prompted for the necessary information.
 
-# Forwarder node installation
+# Forwarder node installation:
 	On the forwarder nodes, navigate to the forwarder_node directory.
 	Run the forwarder-setup file and follow the prompts
 		./forwarder-setup 
