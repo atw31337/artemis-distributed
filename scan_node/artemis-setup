@@ -400,7 +400,6 @@ source s_net { udp(); };
 destination d_artemis { file("/opt/artemis/logs/artemis-files.log"); };
 log { source(s_net); destination(d_artemis); };
 EOF
-service syslog-ng restart
 fi
 
 # Create /etc/artemis.conf
