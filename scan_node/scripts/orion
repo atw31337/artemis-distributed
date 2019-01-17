@@ -104,7 +104,7 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
 	SCANNED=1
 	TLOG=$(mktemp -p /tmp/artemis/)  # Temporary storage for log output
 	date > "$TLOG"
-	clamscan "$1" >> "$TLOG"
+	clamdscan --fdpass --stdout "$1" >> "$TLOG"
 	RESULT=$?
 	# Add the result of the scan to the Cache table
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Result=$RESULT WHERE HashID=$HASHID;"

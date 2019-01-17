@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: artemis-setup
 # Description: Installation script for Artemis Network Traffic Virus Monitor
-# Version: 1.00
+# Version: 1.01
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.00
+VERSION=1.01
 
 usage ()
 {
@@ -117,6 +117,7 @@ fi
 read -p 'Would you like to uninstall clamav? [y/N]: ' ANSWER
 if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing clamav..."
+	service clamav-daemon stop
 	apt-get -y purge "$(dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep clamav)" > /dev/null 2>&1
 else
 	echo "clamav will not be uninstalled."
@@ -366,9 +367,9 @@ if ! dpkg --get-selections | grep -v deinstall | grep -q inotify-tools; then
         echo "Installing inotify-tools..."
         apt-get -y install inotify-tools > /dev/null 2>&1
 fi
-if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq clamav; then
+if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq clamav-daemon; then
        echo "Installing clamav..."
-        apt-get -y install clamav > /dev/null 2>&1
+        apt-get -y install clamav-daemon > /dev/null 2>&1
         echo "Fetching a fresh clam..."
         freshclam > /dev/null 2>&1
 fi

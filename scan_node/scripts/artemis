@@ -288,7 +288,7 @@ done
 
 # Shutdown
 pkill -9 orion
-pkill -9 clamscan
+pkill -9 clamdscan
 
 # Cleanup
 umount /opt/artemis/cache/
