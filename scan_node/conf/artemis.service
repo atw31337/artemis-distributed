@@ -2,7 +2,8 @@
 
 [Unit]
 Description=artemis daemon
-After=mysql.service 
+After=mysql.service clamav-daemon.service
+ 
 
 [Service]
 Type=oneshot
