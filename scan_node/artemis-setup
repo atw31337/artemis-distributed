@@ -459,6 +459,9 @@ cp ./conf/artemis.service /lib/systemd/system/artemis.service
 # Reload systemctl
 systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
 
+# Reload syslog-ng
+service syslog-ng restart
+
 # Create whitelist file if necessary
 if ! [[ -e /opt/artemis/whitelist ]]; then
         cat <<EOF > /opt/artemis/whitelist
