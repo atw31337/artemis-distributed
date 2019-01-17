@@ -139,7 +139,7 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
 			if [[ -e /opt/artemis/cache/$HASH ]]; then
                                	# Move each copy of the infected file to the appropriate directory
                                	while read LINE; do
-                                       	IFILE=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Logs WHERE EntryID=$$LINE;")
+                                       	IFILE=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Logs WHERE EntryID=$LINE;")
                                         mv "$DIR$IFILE" "$IDIR$IFILE"
                                         chmod 600 "$IDIR$IFILE"
                                 done </opt/artemis/cache/"$HASH"
