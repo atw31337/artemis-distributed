@@ -27,6 +27,7 @@ TFILE=$(mktemp -p /tmp/artemis/) # Temporary file for alert email output
 printf "From: %s\nTo: %s\nSubject: Malware Detected!\n\n" "$HOSTNAME" "$EMAIL"  > "$TFILE"
 printf "%s: %s has detected malware on the network.\n " "$TSTAMP" "$HOSTNAME" >> "$TFILE"
 printf "SHA256: %s\n" "$HASH" >> "$TFILE"
+printf "MD5: %\n" "$MD5" >> "$TFILE"
 if [[ -n $IDIR ]]; then
          printf "A copy of the infected file(s) can be located in %s\n" "$IDIR" >> "$TFILE"
 fi
@@ -135,6 +136,7 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
 	fi
 	if [[ $RESULT -eq 1 ]]; then    #An exit code of 1 indicates that an infection has been detected.
 		# If Artemis has been configured to move infected files then move the file to the appropriate directory
+		MD5="$(md5sum $1 | cut -d' ' -f1)"
 		if [[ -n $IDIR ]]; then
 			if [[ -e /opt/artemis/cache/$HASH ]]; then
                                	# Move each copy of the infected file to the appropriate directory
