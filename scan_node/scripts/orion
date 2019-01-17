@@ -26,13 +26,13 @@ sendAlert() {
 TFILE=$(mktemp -p /tmp/artemis/) # Temporary file for alert email output
 printf "From: %s\nTo: %s\nSubject: Malware Detected!\n\n" "$HOSTNAME" "$EMAIL"  > "$TFILE"
 printf "%s: %s has detected malware on the network.\n " "$TSTAMP" "$HOSTNAME" >> "$TFILE"
-printf "SHA256: %s\n" "$HASH" >> "$TFILE"
+printf "SHA256: %s\n" "$SHA256" >> "$TFILE"
 printf "MD5: %\n" "$MD5" >> "$TFILE"
 if [[ -n $IDIR ]]; then
          printf "A copy of the infected file(s) can be located in %s\n" "$IDIR" >> "$TFILE"
 fi
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID=$LOGSID;" >> "$TFILE"
-if [[ -e /opt/artemis/cache/$HASH ]]; then
+if [[ -e /opt/artemis/cache/$MD5 ]]; then
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID IN ($IDLIST);" >> "$TFILE"
 fi
 sendmail -vt < "$TFILE"
@@ -41,8 +41,8 @@ rm -f "$TFILE"
 
 file_integrity_chk() {         # checks and, if necessary, waits for a file to finish being written to disk
 local hash
-while [[ $(sha256sum "$1" | cut -d' ' -f1) != $hash ]]; do
-        hash=$(sha256sum "$1" | cut -d' ' -f1)
+while [[ $(md5sum "$1" | cut -d' ' -f1) != $hash ]]; do
+        hash=$(md5sum "$1" | cut -d' ' -f1)
         sleep 0.1
 done
 }
@@ -94,14 +94,15 @@ fi
 }
 
 filescan() {
-HASH=$(sha256sum "$1" | awk '{ print $1 }')
+SHA256=$(sha256sum "$1" | cut -d' ' -f1)
+MD5=$(md5sum "$1" | cut -d' ' -f1)
 FILENAME=$(basename "$1") # File name only
 EXITTIME="$(date +%s).$(date +%N | head -c3)"
 QTIME=$(echo "scale=3; $EXITTIME - $ENTRYTIME" | bc)
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET QTime=$QTIME WHERE EntryID=$LOGSID;"
-HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$HASH' LIMIT 1;")
+HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$SHA256' LIMIT 1;")
 if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
-	HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO Cache (Hash, Hits, TimeStamp) VALUES ('$HASH', 1, $(date +%s%N)); SELECT LAST_INSERT_ID();")
+	HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO Cache (Hash, Hits, TimeStamp) VALUES ('$SHA256', 1, $(date +%s%N)); SELECT LAST_INSERT_ID();")
 	SCANNED=1
 	TLOG=$(mktemp -p /tmp/artemis/)  # Temporary storage for log output
 	date > "$TLOG"
@@ -117,9 +118,9 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Result=$RESULT, ScanTime=$SCANTIME, \
         Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
         # If a duplicate hash file exists add the result to the Logs entries contained in the file
-        if [[ -e /opt/artemis/cache/$HASH ]]; then
+        if [[ -e /opt/artemis/cache/$SHA256 ]]; then
         	# Find number of LogsIDs listed in the duplicate hash file
-		NUMIDS=$(wc -l < "/opt/artemis/cache/$HASH")
+		NUMIDS=$(wc -l < "/opt/artemis/cache/$SHA256")
 		if  [[ $NUMIDS -gt 1 ]]; then
 			# Create an EntryID list to be used in queries
                         while read LINE; do
@@ -128,33 +129,33 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
                                	else
                                		IDLIST+=",$LINE"
                                	fi
-                        done </opt/artemis/cache/"$HASH"
+                        done </opt/artemis/cache/"$SHA256"
                         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID IN ($IDLIST);"
 		else
-			mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$(cat /opt/artemis/cache/$HASH);"
+			mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$(cat /opt/artemis/cache/$SHA256);"
 		fi
 	fi
 	if [[ $RESULT -eq 1 ]]; then    #An exit code of 1 indicates that an infection has been detected.
 		# If Artemis has been configured to move infected files then move the file to the appropriate directory
-		MD5="$(md5sum $1 | cut -d' ' -f1)"
 		if [[ -n $IDIR ]]; then
-			if [[ -e /opt/artemis/cache/$HASH ]]; then
+			if [[ -e /opt/artemis/cache/$SHA256 ]]; then
                                	# Move each copy of the infected file to the appropriate directory
                                	while read LINE; do
                                        	IFILE=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Logs WHERE EntryID=$LINE;")
                                         mv "$DIR$IFILE" "$IDIR$IFILE"
                                         chmod 600 "$IDIR$IFILE"
-                                done </opt/artemis/cache/"$HASH"
+                                done </opt/artemis/cache/"$SHA256"
                         fi
                         mv "$1" "$IDIR$FILENAME"
                         chmod 600 "$IDIR$FILENAME"
 		fi
 		sendAlert
 	fi
-	if [[ -e /opt/artemis/cache/$HASH ]]; then
-               	rm /opt/artemis/cache/"$HASH"
+	if [[ -e /opt/artemis/cache/$SHA256 ]]; then
+               	rm /opt/artemis/cache/"$SHA256"
         fi
-	printf "SHA256: %s\n" "$HASH" >> "$TLOG"
+	printf "SHA256: %s\n" "$SHA256" >> "$TLOG"
+	printf "MD5: %s\n" "$MD5" >> "$TLOG"
 	printf "Received: %s\n\n" "$TSTAMP" >> "$TLOG"
 	cat "$TLOG" >> /var/log/virus-scan.log
 	rm  "$TLOG"
@@ -184,7 +185,7 @@ else	# Hash is present in the Cache table
 	# Get the result from the Cache table
 	RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
 	if [[ $RESULT == "NULL" ]]; then
-		echo "$LOGSID" >> /opt/artemis/cache/"$HASH"
+		echo "$LOGSID" >> /opt/artemis/cache/"$SHA256"
 	else	# Result is present in the Cache table
 		# Update the result in the Logs table
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"

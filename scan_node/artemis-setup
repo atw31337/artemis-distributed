@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: artemis-setup
 # Description: Installation script for Artemis Network Traffic Virus Monitor
-# Version: 1.01
+# Version: 1.02
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.01
+VERSION=1.02
 
 usage ()
 {
@@ -412,8 +412,8 @@ if [[ -z $( mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SHOW DATABASES L
         mysql --defaults-file=/etc/mysql/debian.cnf -e "CREATE DATABASE artemis;"
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Cache (HashID int NOT NULL AUTO_INCREMENT, Hash char(64) NOT NULL, Result tinyint(1), Hits int NOT NULL, \
                 TimeStamp bigint NOT NULL, PRIMARY KEY (HashID)) ENGINE=InnoDB;"
-        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Logs (EntryID int NOT NULL AUTO_INCREMENT, DateTime DATETIME NOT NULL, Hash char(64) NOT NULL, \
-                Scanned tinyint(1), Queued tinyint(1), Result tinyint(1), FileName varchar(255) NOT NULL, FileSize bigint NOT NULL, ScanTime float, QTime double, \
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Logs (EntryID int NOT NULL AUTO_INCREMENT, DateTime DATETIME NOT NULL, SHA256 char(64) NOT NULL, \
+                MD5 char(32) NOT NULL, Scanned tinyint(1), Queued tinyint(1), Result tinyint(1), FileName varchar(255) NOT NULL, FileSize bigint NOT NULL, ScanTime float, QTime double, \
                 FileType varchar(5) NOT NULL, Source varchar(255), Destination varchar(255), PRIMARY KEY (EntryID)) ENGINE=InnoDB;"
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Queue (FileID int NOT NULL AUTO_INCREMENT, FileName varchar(255) NOT NULL, TimeStamp DATETIME NOT NULL, \
                 LogsID int NOT NULL, EntryTime double NOT NULL, PRIMARY KEY (FileID)) ENGINE=InnoDB;"
@@ -462,18 +462,31 @@ systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
 service syslog-ng restart
 
 # Create whitelist file if necessary
-if ! [[ -e /opt/artemis/whitelist ]]; then
-        cat <<EOF > /opt/artemis/whitelist
+if ! [[ -e /opt/artemis/whitelist.sha256 ]]; then
+        cat <<EOF > /opt/artemis/whitelist.sha256
 # Artemis Hash Whitelist
 # This file can be used to whitelist the SHA256 hashes of known clean files. Hashes should be whitespace separated.
 EOF
 fi
+if ! [[ -e /opt/artemis/whitelist.md5 ]]; then
+        cat <<EOF > /opt/artemis/whitelist.md5
+# Artemis Hash Whitelist
+# This file can be used to whitelist the MD5 hashes of known clean files. Hashes should be whitespace separated.
+EOF
+fi
 
 # Create blacklist file if necessary
-if ! [[ -e /opt/artemis/blacklist ]]; then
-        cat <<EOF > /opt/artemis/blacklist
+if ! [[ -e /opt/artemis/blacklist.sha256 ]]; then
+        cat <<EOF > /opt/artemis/blacklist.sha256
 # Artemis Hash Blacklist
 # This file can be used to blacklist the SHA256 hashes of known infected files in order to reduce the number of scans performed
+# or flag files that are not otherwise detected by ClamAV. Hashes should be whitespace separated.
+EOF
+fi
+if ! [[ -e /opt/artemis/blacklist.md5 ]]; then
+        cat <<EOF > /opt/artemis/blacklist.md5
+# Artemis Hash Blacklist
+# This file can be used to blacklist the MD5 hashes of known infected files in order to reduce the number of scans performed
 # or flag files that are not otherwise detected by ClamAV. Hashes should be whitespace separated.
 EOF
 fi
