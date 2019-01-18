@@ -136,7 +136,7 @@ SHA256=$(sha256sum "$1" | cut -d' ' -f1)
 MD5=$(md5sum "$1" | cut -d' ' -f1)
 FILENAME=$(basename "$1")      # File name only
 LogsEntry "$1" "$SHA256" "$MD5" "$FILENAME"
-HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE SHA256='$SHA256' LIMIT 1;")
+HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$SHA256' LIMIT 1;")
 if grep -qw "$MD5" "$LISTLOC"/blacklist.md5 || grep -qw "$SHA256" "$LISTLOC"/blacklist.sha256; then	# Compare the hashes against the blacklist
 	getSrcDst
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4, Source='$SOURCE', Desintation='$DEST' WHERE EntryID=$LOGSID;"
@@ -167,7 +167,6 @@ else	# Hash is present in the Cache table
 		## Update the result in the Logs table
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
 		if [[ $RESULT -eq 1 ]]; then
-			MD5="$(md5sum $1 | cut -d' ' -f1)"
 			if [[ -n $IDIR ]]; then
 				mv "$DIR$FILENAME" "$IDIR$FILENAME"
 				chmod 600 "$IDIR$FILENAME"
