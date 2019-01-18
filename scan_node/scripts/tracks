@@ -43,7 +43,7 @@ If no Time option is selected or if it is placed after the Query option, the tim
 		-a			all
 
 	Query options:
-		-f <SHA256 Hash>		Query file(s) by SHA256 hash
+		-F <SHA256 Hash>		Query file(s) by SHA256 hash
 		-e <MD5 Hash>			Query file(s) by MD5 hash
 		-S <Source IP>			Query file(s) by source IP address
 		-T <Destination IP>		Query file(s) by destination IP address
@@ -67,7 +67,7 @@ END=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SYSDATE();")
 START=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBDATE('$END', 1);")
 
 while [[ $OPTIND -lt $# ]]; do
-	parsOpts "$@" "h,help,D:,M:,Y:,H:,d:,w:,m:,y:,r:,i:,R:4,a,p,f:,e:,S:,T:,I:,f:"
+	parsOpts "$@" "h,help,D:,M:,Y:,H:,d:,w:,m:,y:,r:,i:,R:4,a,p,F:,e:,S:,T:,I:,f:"
 	case $OPT in
 	h|help)
 		usage
@@ -123,7 +123,7 @@ while [[ $OPTIND -lt $# ]]; do
                 fi
                 exit 0
                 ;;
-         f)
+         F)
                 if [[ $ALL -eq 1 ]]; then
                         echo
                         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
