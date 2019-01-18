@@ -27,7 +27,7 @@ TFILE=$(mktemp -p /tmp/artemis/) # Temporary file for alert email output
 printf "From: %s\nTo: %s\nSubject: Malware Detected!\n\n" "$HOSTNAME" "$EMAIL"  > "$TFILE"
 printf "%s: %s has detected malware on the network.\n " "$TSTAMP" "$HOSTNAME" >> "$TFILE"
 printf "SHA256: %s\n" "$SHA256" >> "$TFILE"
-printf "MD5: %\n" "$MD5" >> "$TFILE"
+printf "MD5: %s\n" "$MD5" >> "$TFILE"
 if [[ -n $IDIR ]]; then
          printf "A copy of the infected file(s) can be located in %s\n" "$IDIR" >> "$TFILE"
 fi
