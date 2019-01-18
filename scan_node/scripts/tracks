@@ -43,7 +43,8 @@ If no Time option is selected or if it is placed after the Query option, the tim
 		-a			all
 
 	Query options:
-		-F <SHA256 Hash>		Query file(s) by hash
+		-f <SHA256 Hash>		Query file(s) by SHA256 hash
+		-e <MD5 Hash>			Query file(s) by MD5 hash
 		-S <Source IP>			Query file(s) by source IP address
 		-T <Destination IP>		Query file(s) by destination IP address
 		-I <Source or Destination IP>	Query files(s) by Source or Destination IP address
@@ -66,7 +67,7 @@ END=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SYSDATE();")
 START=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBDATE('$END', 1);")
 
 while [[ $OPTIND -lt $# ]]; do
-	parsOpts "$@" "h,help,D:,M:,Y:,H:,d:,w:,m:,y:,r:,i:,R:4,a,p,F:,S:,T:,I:,f:"
+	parsOpts "$@" "h,help,D:,M:,Y:,H:,d:,w:,m:,y:,r:,i:,R:4,a,p,f:,e:,S:,T:,I:,f:"
 	case $OPT in
 	h|help)
 		usage
@@ -122,28 +123,41 @@ while [[ $OPTIND -lt $# ]]; do
                 fi
                 exit 0
                 ;;
-         F)
+         f)
                 if [[ $ALL -eq 1 ]]; then
                         echo
                         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
-                        FileType, Source, Destination FROM Logs WHERE Hash='$OPTARG';"
+                        FileType, Source, Destination FROM Logs WHERE SHA256='$OPTARG';"
                         exit 0
                 else
                         echo
                         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
-                        FileType, Source, Destination FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Hash='$OPTARG';"
+                        FileType, Source, Destination FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND SHA256='$OPTARG';"
                         exit 0
                 fi
                 ;;
-        S)
+        e)
+		if [[ $ALL -eq 1 ]]; then
+                        echo
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
+                        FileType, Source, Destination FROM Logs WHERE MD5='$OPTARG';"
+                        exit 0
+                else
+                        echo
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
+                        FileType, Source, Destination FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND MD5='$OPTARG';"
+                        exit 0
+                fi
+                ;;
+	S)
                 if [[ $ALL -eq 1 ]]; then
                         echo
-                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Hash, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
                         FileType, Destination FROM Logs WHERE Source='$OPTARG';"
                         exit 0
                 else
                         echo
-                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Hash, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
                         FileType, Destination FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Source='$OPTARG';"
                         exit 0
                 fi
@@ -151,12 +165,12 @@ while [[ $OPTIND -lt $# ]]; do
         T)
                 if [[ $ALL -eq 1 ]]; then
                         echo
-                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Hash, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
                         FileType, Source FROM Logs WHERE Destination='$OPTARG';"
                         exit 0
                 else
                         echo
-                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Hash, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
                         FileType, Source FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND Destination='$OPTARG';"
                         exit 0
                 fi
@@ -164,12 +178,12 @@ while [[ $OPTIND -lt $# ]]; do
         I)
                 if [[ $ALL -eq 1 ]]; then
                         echo
-                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Hash, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
                         FileType, Source, Destination FROM Logs WHERE (Source='$OPTARG' OR Destination='$OPTARG');"
                         exit 0
                 else
                         echo
-                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Hash, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileName, FileSize, ScanTime, QTime, \
                         FileType, Source, Destination FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND (Source='$OPTARG' OR Destination='$OPTARG');"
                         exit 0
                 fi
@@ -177,12 +191,12 @@ while [[ $OPTIND -lt $# ]]; do
         f)
                 if [[ $ALL -eq 1 ]]; then
                         echo
-                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Hash, Scanned, Queued, Result, FileSize, ScanTime, QTime, FileType, \
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileSize, ScanTime, QTime, FileType, \
                         Source, Destination FROM Logs WHERE FileName='$OPTARG';"
                         exit 0
                 else
                         echo
-                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, Hash, Scanned, Queued, Result, FileSize, ScanTime, QTime, FileType, \
+                        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileSize, ScanTime, QTime, FileType, \
                         Source, Destination FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND FileName='$OPTARG';"
                         exit 0
                 fi
