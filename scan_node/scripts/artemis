@@ -209,15 +209,19 @@ while [[ $OPTIND -lt $# ]];do
 		exit 0
 		;;
 	w)
-		if [[ $(wc -c $OPTARG) -eq 32 ]]; then
-			echo "$OPTARG" >> /opt/artemis/whitelist.md5
-			if [[ -e /opt/artemis/cache/whitelist.md5 ]]; then
-				echo "$OPTARG" >> /opt/artemis/cache/whitelist.md5
+		if [[ $(echo $OPTARG | wc -c) -eq 33 ]]; then 	# Size of hash + return character
+			if ! grep -q "$OPTARG" /opt/artemis/whitelist.md5; then
+				echo "$OPTARG" >> /opt/artemis/whitelist.md5
+				if [[ -e /opt/artemis/cache/whitelist.md5 ]]; then
+					echo "$OPTARG" >> /opt/artemis/cache/whitelist.md5
+				fi
 			fi
-		elif [[ $(wc -c $OPTARG) -eq 64 ]]; then
-			echo "$OPTARG" >> /opt/artemis/whitelist.sha256
-			if [[ -e /opt/artemis/cache/whitelist.sha256 ]]; then
-				echo "$OPTARG" >> /opt/artemis/cache/whitelist.sha256
+		elif [[ $(echo $OPTARG | wc -c) -eq 65 ]]; then # Size of hash + return character
+			if ! grep -q "$OPTARG" /opt/artemis/whitelist.sha256; then
+				echo "$OPTARG" >> /opt/artemis/whitelist.sha256
+				if [[ -e /opt/artemis/cache/whitelist.sha256 ]]; then
+					echo "$OPTARG" >> /opt/artemis/cache/whitelist.sha256
+				fi
 			fi
 		else
 			echo "Invalid hash value"
@@ -225,15 +229,19 @@ while [[ $OPTIND -lt $# ]];do
 		exit 0
 		;;
 	b)
-		if [[ $(wc -c $OPTARG) -eq 32 ]]; then
-			echo "$OPTARG" >> /opt/artemis/blacklist.md5
-			if [[ -e /opt/artemis/cache/blacklist.md5 ]]; then
-				echo "$OPTARG" >> /opt/artemis/cache/blacklist.md5
+		if [[ $(echo $OPTARG | wc -c) -eq 33 ]]; then	# Size of hash + return
+			if ! grep -q "$OPTARG" /opt/artemis/blacklist.md5; then
+				echo "$OPTARG" >> /opt/artemis/blacklist.md5
+				if [[ -e /opt/artemis/cache/blacklist.md5 ]]; then
+					echo "$OPTARG" >> /opt/artemis/cache/blacklist.md5
+				fi
 			fi
-		elif [[ $(wc -c $OPTARG) -eq 64 ]]; then
-			echo "$OPTARG" >> /opt/artemis/blacklist.sha256
-			if [[ -e /opt/artemis/cache/blacklist.sha256 ]]; then
-				echo "$OPTARG" >> /opt/artemis/cache/blacklist.sha256
+		elif [[ $(echo $OPTARG | wc -c) -eq 65 ]]; then # Size of hash + return
+			if ! grep -q "$OPTARG" /opt/artemis/blacklist.sha256; then
+				echo "$OPTARG" >> /opt/artemis/blacklist.sha256
+				if [[ -e /opt/artemis/cache/blacklist.sha256 ]]; then
+					echo "$OPTARG" >> /opt/artemis/cache/blacklist.sha256
+				fi
 			fi
 		else
 			echo "Invalid hash value"
@@ -282,7 +290,7 @@ if ! [[ -d /opt/artemis/cache/ ]]; then
 	mkdir -p /opt/artemis/cache/
 fi
 if  ! mount | grep -q /opt/artemis/cache ; then
-	mount -t tmpfs -o size=2m tmpfs /opt/artemis/cache/
+	mount -t tmpfs -o size=100m tmpfs /opt/artemis/cache/
 	chmod 600 /opt/artemis/cache/
 fi
 
