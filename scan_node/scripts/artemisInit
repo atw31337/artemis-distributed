@@ -22,10 +22,7 @@ start)
         /usr/bin/artemis & 2>>/var/log/artemis.err
         ;;
 stop)
-        while [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Queue;") -ne 0 ]]; do
-		sleep 0.1
-	done
-	pkill -9 "inotify"
+        pkill -9 "inotify"
 	while [[ $(pgrep -xc artemis) -gt 0 ]]; do
 		sleep 0.1
 	done
