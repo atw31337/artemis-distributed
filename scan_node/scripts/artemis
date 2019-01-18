@@ -316,7 +316,7 @@ rm -rf /opt/artemis/cache/
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Logs WHERE Result IS NULL;"
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Result IS NULL;"
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE Queue;"
-if [[ -d /tmp/artemis/ ]]; then
+if [[ -d /tmp/artemis/ ]] && ! [[ -d /tmp/artemis/logRepair ]]; then
 	rm -rf /tmp/artemis/
 fi
 
