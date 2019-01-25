@@ -164,7 +164,7 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
 	# Remove any existing duplicate hashes
 	DUPHASH=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Hash FROM Cache GROUP BY Hash HAVING COUNT(*) > 1 LIMIT 1;")
         while [[ -n $DUPHASH ]]; do
-		DEL=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$DUPHASH' LIMIT 1;")
+		DEL=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$DUPHASH' ORDER BY TimeStamp ASC LIMIT 1;")
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE HashID=$DEL;"
                 DUPHASH=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Hash FROM Cache GROUP BY Hash HAVING COUNT(*) > 1 LIMIT 1;")
 	done
