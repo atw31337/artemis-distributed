@@ -4,6 +4,13 @@
 # until the disk usage is below the specified amount.
 # Author: Andrew T. Withers (atw31337@gmail.com)
 
+# Max number of days to keep
+MAXDAYS=2
+
+find /opt/artemis/extracted/ -type f -mtime +"$MAXDAYS" -exec rm {} \;
+
+
+# Max disk usage
 THRESHOLD=80
 
 while [[ $(df  | grep -w / | awk '{print $5}' | tr -d %) -ge $THRESHOLD ]]; do
