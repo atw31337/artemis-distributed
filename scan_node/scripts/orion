@@ -35,6 +35,7 @@ mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, 
 if [[ -e /opt/artemis/cache/$MD5 ]]; then
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID IN ($IDLIST);" >> "$TFILE"
 fi
+printf "\nVirus Total: https://www.virustotal.com/en/file/%s/analysis/\n" "$SHA256" >> "$TFILE"
 sendmail -vt < "$TFILE"
 rm -f "$TFILE"
 }
