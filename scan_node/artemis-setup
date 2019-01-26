@@ -438,6 +438,7 @@ if ! [[ -d /opt/artemis/extracted/ ]]; then
 	chgrp -R artemis /opt/artemis/extracted/
 fi
 cp ./artemis-setup /opt/artemis/
+cp ./README /opt/artemis/
 cp ./scripts/artemis /usr/bin/artemis
 cp ./scripts/extract-cleanup /usr/bin/extract-cleanup
 cp ./scripts/artemis-logfile-cleanup /usr/bin/artemis-logfile-cleanup
