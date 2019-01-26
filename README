@@ -118,8 +118,8 @@ Usage: artemis [OPTION]
 
 ############################### Auxiliary Scripts ###########################################
 
-Tracks - Artemis log interface
-Usage: tracks [Time OPTION]...[Query OPTION]
+arteLog - Artemis log interface
+Usage: arteLog [Time OPTION]...[Query OPTION]
 If no Time option is selected or if it is placed after the Query option, the time period will default to the last 24 hours
 
         Time Period Options:

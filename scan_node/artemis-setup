@@ -156,7 +156,7 @@ else
 	echo "Log files will be retained."
 fi
 echo "Removing files..."
-rm /etc/artemis.conf /usr/bin/artemis /usr/bin/orion /usr/bin/arteStat /usr/bin/tracks /usr/bin/artemis-brolog-cleanup
+rm /etc/artemis.conf /usr/bin/artemis /usr/bin/orion /usr/bin/arteStat /usr/bin/arteLog /usr/bin/artemis-brolog-cleanup
 rm /usr/bin/artemis-logfile-cleanup /usr/bin/artemis-logstable-cleanup /usr/bin/artemis-logRepair
 systemctl stop artemis && systemctl disable artemis > /dev/null 2>&1
 rm /lib/systemd/system/artemis.service /usr/sbin/artemisInit
@@ -445,7 +445,7 @@ cp ./scripts/artemis-brolog-cleanup /usr/bin/artemis-brolog-cleanup
 cp ./scripts/artemis-logRepair /usr/bin/artemis-logRepair
 cp ./scripts/orion /usr/bin/orion
 cp ./scripts/arteStat /usr/bin/arteStat
-cp ./scripts/tracks /usr/bin/tracks
+cp ./scripts/arteLog /usr/bin/arteLog
 cp ./scripts/hashdb_load /usr/bin/hashdb_load
 cp ./scripts/artemis-logstable-cleanup /usr/bin/artemis-logstable-cleanup
 cp ./scripts/parsOpts.sh /opt/artemis/
