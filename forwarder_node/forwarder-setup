@@ -281,7 +281,7 @@ echo "Generating /etc/artemis.conf..."
 genConf
 
 # Copy files
-cp ./README /opt/artemis/
+cp ../README /opt/artemis/
 cp ./artemis-forwarder /usr/bin/
 cp ./artemis-forwarder.service /lib/systemd/system/
 cp ./artemisFInit /usr/sbin/
