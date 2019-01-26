@@ -42,8 +42,8 @@ Usage: artemis [OPTION]
 		-h	   		This message
 		-v			Print version information
 		-f	    		Flush the hash cache
-		-w <Hash>	Add a SHA256 or MD5 hash to the whitelist
-		-b <Hash>	Add a SHA256 or MD5 hash to the blacklist
+		-w <Hash>		Add a SHA256 or MD5 hash to the whitelist
+		-b <Hash>		Add a SHA256 or MD5 hash to the blacklist
 
 EOF
 }
