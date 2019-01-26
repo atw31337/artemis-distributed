@@ -113,10 +113,15 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Result=$RESULT WHERE HashID=$HASHID;"
 	# Release the worker slot in the workers pid directory
 	rm /opt/artemis/cache/workers/$BASHPID.pid
-	SCANTIME=$(grep Time "$TLOG" | awk '{print $2}')
-	getSrcDst
+	if [[ $RESULT -eq 2 ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Logs WHERE EntryID=$LOGSID;") -ne 2 ]]; then
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO Queue (FileName, TimeStamp, LogsID, EntryTime) VALUES ('$1', '$TSTAMP', $LOGSID,\
+		$(date +%s).$(date +%N | head -c3));" 
+	else
+		SCANTIME=$(grep Time "$TLOG" | awk '{print $2}')
+		getSrcDst
+	fi
 	# Update the Logs table with the data from the scanned file
-        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Result=$RESULT, ScanTime=$SCANTIME, \
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Result=$RESULT, ScanTime=$SCANTIME, \
         Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
         # If a duplicate hash file exists add the result to the Logs entries contained in the file
         if [[ -e /opt/artemis/cache/$SHA256 ]]; then
