@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: artemis-setup
 # Description: Installation script for Artemis Network Traffic Virus Monitor
-# Version: 1.03
+# Version: 1.04
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.03
+VERSION=1.04
 
 usage ()
 {
@@ -437,26 +437,13 @@ if ! [[ -d /opt/artemis/extracted/ ]]; then
 	mkdir -m 770 /opt/artemis/extracted/
 	chgrp -R artemis /opt/artemis/extracted/
 fi
-cp ./artemis-setup /opt/artemis/
-cp ../README /opt/artemis/
-cp ./scripts/artemis /usr/bin/artemis
-cp ./scripts/extract-cleanup /usr/bin/extract-cleanup
-cp ./scripts/artemis-logfile-cleanup /usr/bin/artemis-logfile-cleanup
-cp ./scripts/artemis-brolog-cleanup /usr/bin/artemis-brolog-cleanup
-cp ./scripts/artemis-logRepair /usr/bin/artemis-logRepair
-cp ./scripts/orion /usr/bin/orion
-cp ./scripts/arteStat /usr/bin/arteStat
-cp ./scripts/arteLog /usr/bin/arteLog
-cp ./scripts/hashdb_load /usr/bin/hashdb_load
-cp ./scripts/artemis-logstable-cleanup /usr/bin/artemis-logstable-cleanup
+cp ./artemis-setup ../README /opt/artemis/
+cp ./scripts/artemis ./scripts/extract-cleanup ./scripts/artemis-logfile-cleanup ./scripts/artemis-brolog-cleanup  ./scripts/scavenger \
+./scripts/artemis-logRepair ./scripts/orion ./scripts/arteStat ./scripts/arteLog ./scripts/hashdb_load ./scripts/artemis-logstable-cleanup /usr/bin/
 cp ./scripts/parsOpts.sh /opt/artemis/
 cp ./scripts/artemisInit /usr/sbin/artemisInit
 
-cp ./conf/extract-cleanup-cron /etc/cron.d/extract-cleanup-cron
-cp ./conf/artemis-brolog-cron /etc/cron.d/artemis-brolog-cron
-cp ./conf/artemis-logfile-cron /etc/cron.d/artemis-logfile-cron
-cp ./conf/artemis-logstable-cron /etc/cron.d/artemis-logstable-cron
-cp ./conf/artemis-logRepair-cron /etc/cron.d/artemis-logRepair-cron
+cp ./conf/artemis /etc/cron.d/
 cp ./conf/artemis.service /lib/systemd/system/artemis.service
 
 # Reload systemctl

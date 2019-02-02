@@ -1,8 +1,0 @@
-# /etc/cron.d/artemis-logRepair-cron
-#
-# crontab to repair Artemis Stats tables
-
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-
-*/10 *  *  *  * root /usr/bin/artemis-logRepair > /dev/null 2>&1

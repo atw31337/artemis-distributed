@@ -41,7 +41,8 @@ Usage: artemis [OPTION]
 
 		-h	   		This message
 		-v			Print version information
-		-f	    		Flush the hash cache
+		-f <file>		Force process a file
+		-p	    		Purge the hash cache
 		-w <Hash>		Add a SHA256 or MD5 hash to the whitelist
 		-b <Hash>		Add a SHA256 or MD5 hash to the blacklist
 
@@ -197,7 +198,7 @@ fi
 
 # Parse options
 while [[ $OPTIND -lt $# ]];do
-	parsOpts "$@" "h,help,v,f,w:,b:"
+	parsOpts "$@" "h,help,v,f:,p,w:,b:"
 	case $OPT in
 	h|help)
 		usage
@@ -208,8 +209,12 @@ while [[ $OPTIND -lt $# ]];do
 		exit 0
 		;;
 	f)
+		prescan "$OPTARG" &
+		exit 0
+		;;
+	p)
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE Cache;" > /dev/null
-		echo "Artemis: Cache has been flushed"
+		echo "Artemis: Cache has been purged"
 		exit 0
 		;;
 	w)

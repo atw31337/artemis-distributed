@@ -1,8 +1,0 @@
-# /etc/cron.d/artemis-brolog-cron
-#
-# crontab to maintain /opt/artemis/extracted/ 
-
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-
-*  *  *  *  * root /usr/bin/extract-cleanup > /dev/null 2>&1
