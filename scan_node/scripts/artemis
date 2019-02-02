@@ -77,7 +77,26 @@ mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, 
 if [[ -e /opt/artemis/cache/$SHA256 ]]; then
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID IN ($IDLIST);" >> "$TFILE"
 fi
-printf "\nVirus Total: https://www.virustotal.com/en/file/%s/analysis/\n" "$SHA256" >> "$TFILE"
+# VirusTotal analysis
+if [[ -n $VTAPI ]]; then
+	# Check if an analysis already exists
+	if [[ $(curl -sI https://www.virustotal.com/en/file/$SHA256/analysis/ | awk '/^http/ {print $2}') -ne 200 ]]; then	# Analysis does not exist
+		# Upload file to VirusTotal for scanning
+		VTOUT=$(curl -s --request POST \
+			--url 'https://www.virustotal.com/vtapi/v2/file/scan' \
+			--form 'apikey='"$VTAPI" \
+			--form 'file=@'"$1")
+		# Extract the scan results link from the output
+		VTLINK=$(echo -n "$VTOUT" | cut -d',' -f6 | sed 's/\( "permalink": "\|"\)//g')
+	else
+		# VT analysis already exists
+		VTLINK="https://www.virustotal.com/en/file/$SHA256/analysis/"
+	fi
+else
+	# VT File analysis page
+	VTLINK="https://www.virustotal.com/en/file/$SHA256/analysis/"
+fi
+printf "VirusTotal: %s\n" "$VTLINK" >> "$TFILE"
 sendmail -vt < "$TFILE"
 rm -f "$TFILE"
 }
@@ -263,8 +282,9 @@ DIR=$(grep SDIR "$CONF" | cut -d'=' -f2)
 IDIR=$(grep IDIR "$CONF" | cut -d'=' -f2)
 MAXPROC=$(grep MAXPROC "$CONF" | cut -d'=' -f2)
 MAXHASH=$(grep MAXHASH "$CONF" | cut -d'=' -f2)
+VTAPI=$(grep VTAPI "$CONF" | cut -d'=' -f2)
 
-# Check that all variables contain values
+# Check that required variables contain values
 if [[ -z "$DIR" ]] || [[ -z "$MAXPROC" ]] || [[ -z "$MAXHASH" ]] || [[ -z "$EMAIL" ]]; then
 	echo Artemis: Invalid configuration detected! Check that the conf file has been properly configured.
 	exit 1

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: artemis-setup
 # Description: Installation script for Artemis Network Traffic Virus Monitor
-# Version: 1.04
+# Version: 1.05
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.04
+VERSION=1.05
 
 usage ()
 {
@@ -69,6 +69,9 @@ SDIR=/opt/artemis/extracted/
 
 # Number of days worth of log data that will be maintained.
 LOGSDATA=$LOGSDATA
+
+# VirusTotal API-Key
+VTAPI=$VTAPI
 
 EOF
 }
@@ -282,7 +285,7 @@ fi
 # If non-interactive mode is selected, verify the integrity of the answer file and retrieve config variables.
 if [[ $MODE -eq 1 ]];then
         if grep -q MYDOMAIN= "$AFILE" && grep -q RELAYHOST= "$AFILE" && grep -q MAXPROC= "$AFILE" && grep -q MAXHASH= "$AFILE" \
-        && grep -q IDIR= "$AFILE" && grep -q EMAIL= "$AFILE" && grep -q LOGSDATA= "$AFILE"; then
+        && grep -q IDIR= "$AFILE" && grep -q EMAIL= "$AFILE" && grep -q LOGSDATA= "$AFILE" && grep -q VTAPI= "$AFILE"; then
                 MYDOMAIN=$(grep MYDOMAIN "$AFILE" | cut -d'=' -f2)
                 RELAYHOST=$(grep RELAYHOST "$AFILE" | cut -d'=' -f2)
                 MAXPROC=$(grep MAXPROC "$AFILE" | cut -d'=' -f2)
@@ -290,6 +293,7 @@ if [[ $MODE -eq 1 ]];then
                 IDIR=$(grep IDIR "$AFILE" | cut -d'=' -f2)
                 EMAIL=$(grep EMAIL "$AFILE" | cut -d'=' -f2)
                 LOGSDATA=$(grep LOGSDATA "$AFILE" | cut -d'=' -f2)
+		VTAPI=$(grep VTAPI "$AFILE" | cut -d'=' -f2)
 	else
                 echo "Answer file integrity check failed"
                 echo "Aborting installation"
@@ -328,6 +332,15 @@ else	# If Interactive Mode is selected then acquire artemis.conf settings from t
         if [[ -z $EMAIL ]]; then
                 EMAIL=root@localhost
         fi
+	read -p 'Artemis: Would you like to use an API-Key to upload infected files to VirusTotal for scanning? [y/N]: ' SELECTION
+	if [[ ${SELECTION,,} == 'y' ]]; then
+		while [[ $(echo -n $VTAPI | wc -c) -ne 64 ]]; do
+			read -p 'Artemis: Please enter your VirusTotal API-Key: ' VTAPI
+			if [[ $(echo -n $VTAPI | wc -c) -ne 64 ]]; then
+				echo "Artemis: Invalid API-Key"
+			fi
+		done
+	fi
 fi
 
 printf "Installing scanner node: %s\n" "$HOSTNAME"
