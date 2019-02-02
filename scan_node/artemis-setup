@@ -437,10 +437,9 @@ if ! [[ -d /opt/artemis/extracted/ ]]; then
 	mkdir -m 770 /opt/artemis/extracted/
 	chgrp -R artemis /opt/artemis/extracted/
 fi
-cp ./artemis-setup ../README /opt/artemis/
+cp ./artemis-setup ../README ./scripts/parsOpts.sh /opt/artemis/
 cp ./scripts/artemis ./scripts/extract-cleanup ./scripts/artemis-logfile-cleanup ./scripts/artemis-brolog-cleanup  ./scripts/scavenger \
 ./scripts/artemis-logRepair ./scripts/orion ./scripts/arteStat ./scripts/arteLog ./scripts/hashdb_load ./scripts/artemis-logstable-cleanup /usr/bin/
-cp ./scripts/parsOpts.sh /opt/artemis/
 cp ./scripts/artemisInit /usr/sbin/artemisInit
 
 cp ./conf/artemis /etc/cron.d/
