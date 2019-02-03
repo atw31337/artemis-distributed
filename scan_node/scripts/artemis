@@ -173,23 +173,23 @@ if [[ -n $HASHID ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artem
                 ## Update the result in the Logs table
                 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
                 if [[ $RESULT -eq 1 ]]; then
-                        if [[ -n $IDIR ]]; then
+                        sendAlert "$1"
+			if [[ -n $IDIR ]]; then
                                 mv "$DIR$FILENAME" "$IDIR$FILENAME"
                                 chmod 600 "$IDIR$FILENAME"
                         fi
-                        sendAlert
                 fi
         fi
 elif [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Blacklist WHERE MD5='$MD5';") -ne 0 ]] ||\
 	[[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Blacklist WHERE SHA256='$SHA256';") -ne 0 ]]; then # Compare the hashes against the blacklist
 	getSrcDst
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
+	sendAlert "$1"
 	if [[ -n $IDIR ]]; then
                	mv "$DIR$FILENAME" "$IDIR$FILENAME"
                	chmod 600 "$IDIR$FILENAME"
 	fi
-	sendAlert
-elif [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Whitelist WHERE MD5='$MD5';") -ne 0 ]] ||\
+	elif [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Whitelist WHERE MD5='$MD5';") -ne 0 ]] ||\
 	[[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Whitelist WHERE SHA256='$SHA256';") -ne 0 ]]; then   # Compare the hashes against the whitelist
 	getSrcDst
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=3, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"

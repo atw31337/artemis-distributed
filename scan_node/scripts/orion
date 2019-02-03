@@ -163,6 +163,7 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
 			fi
 		fi
 		if [[ $RESULT -eq 1 ]]; then    #An exit code of 1 indicates that an infection has been detected.
+			sendAlert "$1"
 			# If Artemis has been configured to move infected files then move the file to the appropriate directory
 			if [[ -n $IDIR ]]; then
 				if [[ -e /opt/artemis/cache/$SHA256 ]]; then
@@ -176,7 +177,6 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
                         	mv "$1" "$IDIR$FILENAME"
                         	chmod 600 "$IDIR$FILENAME"
 			fi
-			sendAlert
 		fi
 		if [[ -e /opt/artemis/cache/$SHA256 ]]; then
                		rm /opt/artemis/cache/"$SHA256"
@@ -218,11 +218,11 @@ else	# Hash is present in the Cache table
 		# Update the result in the Logs table
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
 		if [[ $RESULT -eq 1 ]]; then
+			sendAlert "$1"
 			if [[ -n $IDIR ]]; then
 				mv "$DIR$FILENAME" "$IDIR$FILENAME"
 				chmod 600 "$IDIR$FILENAME"
 			fi
-			sendAlert
 		fi
 	fi
 fi
