@@ -38,7 +38,7 @@ fi
 # VirusTotal analysis
 if [[ -n $VTAPI ]]; then
         # Check if an analysis already exists
-        if [[ $(curl -sI https://www.virustotal.com/en/file/$SHA256/analysis/ | awk '/^http/ {print $2}') -ne 200 ]]; then      # Analysis does not exist
+        if [[ $(curl -sI https://www.virustotal.com/en/file/"$SHA256"/analysis/ | awk '/^http/ {print $2}') -ne 200 ]]; then      # Analysis does not exist
                 # Upload file to VirusTotal for scanning
                 VTOUT=$(curl -s --request POST \
                         --url 'https://www.virustotal.com/vtapi/v2/file/scan' \
@@ -73,46 +73,6 @@ printf "%s: Low memory detected! Emergency stop sequence activated." "$(date)" >
 exit
 }
 
-getSrcDst() {
-# Check the current log
-if [[ -e /opt/artemis/logs/artemis-files.log ]]; then
-        SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
-        DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
-fi
-
-# If the Source/Destination are not located there, check the most recently archived log file
-if [[ -z $SOURCE ]] || [[ -z $DEST ]] && [[ -f /opt/artemis/logs/artemis-files.log.1.gz ]]; then
-        TEMPID=$(date +%s%N)
-	file_integrity_chk /opt/artemis/logs/artemis-files.log.1.gz # Ensure that the file has been completely written to disk during log rotation before proceeding
-	cp /opt/artemis/logs/artemis-files.log.1.gz /tmp/artemis/"$TEMPID".temp.gz
-	gzip -d /tmp/artemis/"$TEMPID".temp.gz
-	SOURCE=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
-	DEST=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
-	rm /tmp/artemis/"$TEMPID".temp
-fi
-
-# If the Source/Destination are not located in the archived log either, then wait for the data to be written to the current log
-if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
-        for (( i=0; i < 300; i++ )); do # For loop prevents infinite loops caused by log rotation
-                local counter=0
-                while ! [[ -e /opt/artemis/logs/artemis-files.log ]]; do       # Prevents missing file errors during log rotation
-                                sleep 0.1
-                                ((counter++))
-                                if [[ $counter -ge 300 ]]; then	# Prevents an infinite while loop
-                                        break 2
-                                fi
-                done
-		SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
-                DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
-                if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
-                	sleep 1
-                else
-                	break
-                fi
-        done
-fi
-}
-
 filescan() {
 SHA256=$(sha256sum "$1" | cut -d' ' -f1)
 MD5=$(md5sum "$1" | cut -d' ' -f1)
@@ -141,9 +101,8 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
         	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Result=$RESULT WHERE HashID=$HASHID;"
 		# Update the Logs table with the data from the scanned file
 		SCANTIME=$(grep Time "$TLOG" | awk '{print $2}')
-		getSrcDst
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Result=$RESULT, ScanTime=$SCANTIME, \
-        	Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Result=$RESULT, ScanTime=$SCANTIME \
+        	WHERE EntryID=$LOGSID;"
         	# If a duplicate hash file exists add the result to the Logs entries contained in the file
         	if [[ -e /opt/artemis/cache/$SHA256 ]]; then
         		# Find number of LogsIDs listed in the duplicate hash file
@@ -205,10 +164,8 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
 else	# Hash is present in the Cache table
 	# Release the worker slot in the workers pid directory
 	rm /opt/artemis/cache/workers/$BASHPID.pid
-	SCANNED=0
-	getSrcDst
 	# Update the Logs and Cache table entries
-	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Source='$SOURCE', Destination='$DEST' WHERE EntryID=$LOGSID;"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0 WHERE EntryID=$LOGSID;"
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Hits=Hits+1, TimeStamp=$(date +%s%N) WHERE HashID=$HASHID;"
 	# Get the result from the Cache table
 	RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")

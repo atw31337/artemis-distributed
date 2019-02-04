@@ -160,6 +160,8 @@ If no Time option is selected or if it is placed after the Query option, the tim
 		2	The file was scanned by clamAV; however, an error was detected during the scan
 		3	The file hash was found in the whitelist
 		4	The file hash was found in the blacklist
+		5	The source of the file transfer was found in the whitelist
+		6	The source of the file transfer was found in the blacklist
 
 # FileSize is recorded in number of bytes
 
