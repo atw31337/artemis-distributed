@@ -103,51 +103,51 @@ sendmail -vt < "$TFILE"
 rm -f "$TFILE"
 }
 
-file_integrity_chk() {         # checks and, if necessary, waits for a file to finish being written to disk
+file_integrity_chk() {	 # checks and, if necessary, waits for a file to finish being written to disk
 local hash
 while [[ $(md5sum "$1" | cut -d' ' -f1) != "$hash" ]]; do
-        hash=$(md5sum "$1" | cut -d' ' -f1)
-        sleep 0.1
+	hash=$(md5sum "$1" | cut -d' ' -f1)
+	sleep 0.1
 done
 }
 
 getSrcDst() {
 # Check the current log
 if [[ -e /opt/artemis/logs/artemis-files.log ]]; then
-        SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
-        DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+	SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+	DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
 fi
 
 # If the Source/Destination are not located there, check the most recently archived log file
 if [[ -z $SOURCE ]] || [[ -z $DEST ]] && [[ -f /opt/artemis/logs/artemis-files.log.1.gz ]]; then
-        TEMPID=$(date +%s%N)
-        file_integrity_chk /opt/artemis/logs/artemis-files.log.1.gz # Ensure that the file has been completely written to disk during log rotation before proceeding
-        cp /opt/artemis/logs/artemis-files.log.1.gz /tmp/artemis/"$TEMPID".temp.gz
-        gzip -d /tmp/artemis/"$TEMPID".temp.gz
-        SOURCE=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
-        DEST=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
-        rm /tmp/artemis/"$TEMPID".temp
+	TEMPID=$(date +%s%N)
+	file_integrity_chk /opt/artemis/logs/artemis-files.log.1.gz # Ensure that the file has been completely written to disk during log rotation before proceeding
+	cp /opt/artemis/logs/artemis-files.log.1.gz /tmp/artemis/"$TEMPID".temp.gz
+	gzip -d /tmp/artemis/"$TEMPID".temp.gz
+	SOURCE=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+	DEST=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+	rm /tmp/artemis/"$TEMPID".temp
 fi
 
 # If the Source/Destination are not located in the archived log either, then wait for the data to be written to the current log
 if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
-        for (( i=0; i < 300; i++ )); do # For loop, rather than while, prevents infinite loops caused by log rotation
-                local counter=0
+	for (( i=0; i < 300; i++ )); do # For loop, rather than while, prevents infinite loops caused by log rotation
+		local counter=0
 		while ! [[ -e /opt/artemis/logs/artemis-files.log ]]; do       # Prevents missing file errors during log rotation
-                                sleep 0.1
+				sleep 0.1
 				((counter++))
 				if [[ $counter -ge 300 ]]; then	# Prevents an inifinite while loop
 					break 2
 				fi
-                done
-                SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
-                DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
-                if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
-                        sleep 1
-                else
-                        break
-                fi
-        done
+		done
+		SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+		DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+		if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
+			sleep 1
+		else
+			break
+		fi
+	done
 fi
 }
 
@@ -173,32 +173,32 @@ elif [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT 
 	# The source is presnet in the source whitelist
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=5 WHERE EntryID=$LOGSID;"
 elif [[ -n $HASHID ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE Hash='$SHA256' LIMIT 1;") -ne 2 ]]; then
-        # Hash is present in the Cache table and the result was not an error
-        RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
-        # Update the Logs and Cache table entries
-        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0 WHERE EntryID=$LOGSID;"
-        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Hits=Hits+1, TimeStamp=$(date +%s%N) WHERE HashID=$HASHID;"
-        if [[ $RESULT == "NULL" ]]; then
-                echo "$LOGSID" >> /opt/artemis/cache/"$SHA256"
-        else    # Result is present in the Cache table
-                ## Update the result in the Logs table
-                mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
-                if [[ $RESULT -eq 1 ]]; then
-                        sendAlert "$1"
-                        if [[ -n $IDIR ]]; then
-                                mv "$DIR$FILENAME" "$IDIR$FILENAME"
-                                chmod 600 "$IDIR$FILENAME"
-                        fi
-                fi
-        fi
+	# Hash is present in the Cache table and the result was not an error
+	RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
+	# Update the Logs and Cache table entries
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0 WHERE EntryID=$LOGSID;"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Hits=Hits+1, TimeStamp=$(date +%s%N) WHERE HashID=$HASHID;"
+	if [[ $RESULT == "NULL" ]]; then
+		echo "$LOGSID" >> /opt/artemis/cache/"$SHA256"
+	else    # Result is present in the Cache table
+		## Update the result in the Logs table
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
+		if [[ $RESULT -eq 1 ]]; then
+			sendAlert "$1"
+			if [[ -n $IDIR ]]; then
+				mv "$DIR$FILENAME" "$IDIR$FILENAME"
+				chmod 600 "$IDIR$FILENAME"
+			fi
+		fi
+	fi
 elif [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashBlacklist WHERE MD5='$MD5';") -gt 0 ]] ||\
 	[[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashBlacklist WHERE SHA256='$SHA256';") -gt 0 ]]; then
 	# The hash is present in the hash blacklist
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4 WHERE EntryID=$LOGSID;"
 	sendAlert "$1"
 	if [[ -n $IDIR ]]; then
-               	mv "$DIR$FILENAME" "$IDIR$FILENAME"
-               	chmod 600 "$IDIR$FILENAME"
+	       	mv "$DIR$FILENAME" "$IDIR$FILENAME"
+	       	chmod 600 "$IDIR$FILENAME"
 	fi
 elif [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashWhitelist WHERE MD5='$MD5';") -gt 0 ]] ||\
 	[[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashWhitelist WHERE SHA256='$SHA256';") -gt 0 ]]; then
