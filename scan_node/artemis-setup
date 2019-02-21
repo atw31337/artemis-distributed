@@ -160,7 +160,7 @@ else
 fi
 echo "Removing files..."
 rm /etc/artemis.conf /usr/bin/artemis /usr/bin/orion /usr/bin/arteStat /usr/bin/arteLog /usr/bin/artemis-brolog-cleanup
-rm /usr/bin/artemis-logfile-cleanup /usr/bin/artemis-logstable-cleanup /usr/bin/artemis-logRepair
+rm /usr/bin/artemis-logfile-cleanup /usr/bin/artemis-logstable-cleanup /usr/bin/artemis-logRepair /usr/bin/scavenger
 systemctl stop artemis && systemctl disable artemis > /dev/null 2>&1
 rm /lib/systemd/system/artemis.service /usr/sbin/artemisInit
 systemctl daemon-reload && systemctl reset-failed > /dev/null 2>&1
