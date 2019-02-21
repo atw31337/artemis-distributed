@@ -10,3 +10,4 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 05 *  *  *  * root /usr/bin/extract-cleanup > /dev/null 2>&1
 10 *  *  *  * root /usr/bin/artemis-logRepair > /dev/null 2>&1
 15 0  *  *  * root /usr/bin/artemis-logstable-cleanup > /dev/null 2>&1
+*/10 *  *  *  * root /usr/bin/scavenger > /dev/null 2>&1

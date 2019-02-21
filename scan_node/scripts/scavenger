@@ -1,0 +1,28 @@
+#!/bin/bash
+# Title: scavenger
+# Description: scavenger compares the files that have been processed to the list of files that were received from the forwarding nodes
+# and processes any files that were missed on the first pass. No file gets left behind!
+# Author: Andrew T. Withers
+
+if [[ -n $(pgrep -x artemis) ]]; then
+	START=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBTIME(SYSDATE(), '6:00:0');")
+	END=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBTIME(SYSDATE(), '00:10:00');")
+	# Files that were processed
+	printf "/opt/artemis/extracted/%s\n" $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Logs \
+	WHERE DateTime > '$START';") | sort > /tmp/processed.output
+	# Files that were forwarded
+	find /opt/artemis/extracted/ -newermt "$START" ! -newermt "$END" | sort > /tmp/forwarded.output
+
+	# Compare the two lists of files and output the files that were not processed
+	comm -13 /tmp/processed.output /tmp/forwarded.output > /tmp/missed.output
+
+	# Process the list of files that were previously missed
+	while read line; do
+		artemis -f "$line"
+		sleep 0.2	# Stagger file processing to prevent system overloading
+	done < /tmp/missed.output
+
+	# Cleanup
+	rm /tmp/processed.output /tmp/forwarded.output /tmp/missed.output
+fi
+exit
