@@ -34,9 +34,10 @@ for (( i=5; i>0; i-- )); do	# Determine the number of the oldest archived file
 		break
 	fi
 done
-# Zip the current log file to the first archived position and truncate the current log file
+# Copy the current log file to the first archived position, truncate the current log file, and zip the first archived file
 ## This method is utilized instead of mv in order to prevent complications whereby syslog-ng fails to begin writing to a new file
 if [[ -e /opt/artemis/logs/artemis-files.log ]]; then
-	gzip -c /opt/artemis/logs/artemis-files.log > /opt/artemis/logs/artemis-files.log.1.gz && cp /dev/null /opt/artemis/logs/artemis-files.log
+	cp /opt/artemis/logs/artemis-files.log /opt/artemis/logs/artemis-files.log.1 && cp /dev/null /opt/artemis/logs/artemis-files.log
+	gzip /opt/artemis/logs/artemis-files.log.1
 fi
 exit
