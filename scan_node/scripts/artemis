@@ -88,8 +88,13 @@ if [[ -n $VTAPI ]]; then
 			--url 'https://www.virustotal.com/vtapi/v2/file/scan' \
 			--form 'apikey='"$VTAPI" \
 			--form 'file=@'"$1")
-		# Extract the scan results link from the output
-		VTLINK=$(echo -n "$VTOUT" | cut -d',' -f6 | sed 's/\( "permalink": "\|"\)//g')
+		# Check if the file was too large to be scanned via API
+                if echo "$VTOUT" | grep -q "Your client issued a request that was too large."; then
+                        VTLINK="The file was too large to be automatically scanned via API. Please upload the file manually."
+                else
+                        # Extract the scan results link from the output
+                        VTLINK=$(echo -n "$VTOUT" | cut -d',' -f6 | sed 's/\( "permalink": "\|"\)//g')
+                fi
 	else
 		# VT analysis already exists
 		VTLINK="https://www.virustotal.com/en/file/$SHA256/analysis/"
