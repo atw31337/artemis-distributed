@@ -38,7 +38,7 @@ fi
 # VirusTotal analysis
 if [[ -n $VTAPI ]]; then
 	# Check if an analysis already exists
-	if [[ $(curl -sI https://www.virustotal.com/en/file/"$SHA256"/analysis/ | awk '/^http/ {print $2}') -ne 200 ]]; then      # Analysis does not exist
+	if [[ $(curl -sI https://www.virustotal.com/en/file/"$SHA256"/analysis/ | awk '/^HTTP/ {print $2}') -ne 200 ]]; then      # Analysis does not exist
 		# Upload file to VirusTotal for scanning
 		VTOUT=$(curl -s --request POST \
 			--url 'https://www.virustotal.com/vtapi/v2/file/scan' \
