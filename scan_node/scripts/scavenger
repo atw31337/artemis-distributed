@@ -6,7 +6,7 @@
 
 if [[ -n $(pgrep -x artemis) ]]; then
 	START=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBTIME(SYSDATE(), '6:00:0');")
-	END=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBTIME(SYSDATE(), '00:10:00');")
+	END=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT ADDDATE($START, '05:50:00');")
 	# Files that were processed
 	printf "/opt/artemis/extracted/%s\n" $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Logs \
 	WHERE DateTime > '$START';") | sort > /tmp/processed.output
