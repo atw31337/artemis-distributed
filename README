@@ -60,7 +60,7 @@
 	firewall on the scanner node must allow traffic to these ports from each of the 
 	forwarder nodes.
 ## User privileges
-	The user account that Artmeis forwarder nodes use to connect to the scanner node
+	The user account that Artemis forwarder nodes use to connect to the scanner node
 	must be a member of the sudo group during installation . This account will 
 	continue to be used by the forwarders post-installation; however, sudo privileges 
 	will no longer be required.
@@ -73,10 +73,10 @@
 	Note: The scanning node must be installed prior to installing any forwarder nodes.
 	The scanner node installation can be performed interactively by following the
 	prompts or automatically by using an answer file. An answer file template, 
-	install.conf, is located in the conf directory. Copy this file	and edit each 
+	install.conf, is located in the conf directory. Copy this file and edit each 
 	field with the appropriate configurations. Run an automatic installation using 
 	-f option and the location of the answer file.
-		./artemis-setup -f <answer file path>
+		./artemis-setup -f </path/to/answer/file>
 	Alternatively, perform an interactive installation by running the installer
 	without any options.
 		./artemis-setup
