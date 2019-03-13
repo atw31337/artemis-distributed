@@ -43,9 +43,9 @@ if [[ $(echo "$DIR" | tail -c -1) != "/" ]]; then
 fi
 
 cat << EOF > /etc/artemis.conf
-###############################################################
-#     Artemis Network Virus Monitor configuration file        #
-###############################################################
+######################################################################
+#     Artemis Network Virus Monitor forwarder configuration file     #
+######################################################################
 
 # Do not modify version data
 VERSION=$VERSION
