@@ -281,14 +281,14 @@ echo "Generating /etc/artemis.conf..."
 genConf
 
 # Copy files
+if ! [[ -d /opt/artemis ]]; then
+        mkdir -p /opt/artemis/
+fi
 cp ../README /opt/artemis/
 cp ./artemis-forwarder /usr/bin/
 cp ./artemis-forwarder.service /lib/systemd/system/
 cp ./artemisFInit /usr/sbin/
 cp ./extract.conf "$EXTLOC"
-if ! [[ -d /opt/artemis/ ]]; then
-	mkdir -p /opt/artemis/
-fi
 cp ./forwarder-setup /opt/artemis/
 
 # Reload systemctl
