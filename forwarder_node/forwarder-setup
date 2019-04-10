@@ -263,7 +263,7 @@ cat << EOF >> /etc/syslog-ng/syslog-ng.conf
 
 # Send bro_files syslogs to remote server
 filter f_ext { message("EXTRACT"); };
-source s_bro_logs { file("/nsm/bro/spool/manager/files.log" flags(no-parse) program_override("bro_files")); };
+source s_bro_logs { file("$(ls -l /nsm/bro/logs/current | cut -d'>' -f2 | tail -c +2)/files.log" flags(no-parse) program_override("bro_files")); };
 destination d_artemis { udp("$SCANNER" port(514)); };
 log { source(s_bro_logs); filter(f_ext); destination(d_artemis); };
 EOF
