@@ -283,11 +283,15 @@ while [[ $OPTIND -lt $# ]];do
 		if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashWhitelist WHERE MD5='$OPTARG' OR SHA256='$OPTARG';") -eq 0 ]]; then
 			if [[ $(echo -n "$OPTARG" | wc -c) -eq 32 ]]; then 	# MD5
 				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO HashWhitelist (MD5) VALUES ('$OPTARG');"
+				SHA256=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT SHA256 FROM Logs WHERE MD5='$OPTARG' LIMIT 1;")
+				if [[ -n $SHA256 ]]; then
+					mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$SHA256';"
+				fi
 				echo "$OPTARG has been added to the whitelist"
 				exit 0
 			elif [[ $(echo -n "$OPTARG" | wc -c) -eq 64 ]]; then # SHA256
 				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO HashWhitelist (SHA256) VALUES ('$OPTARG');"
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$SHA256';"
+				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$OPTARG';"
 				echo "$OPTARG has been added to the whitelist"
 				exit 0
 			else
@@ -303,11 +307,15 @@ while [[ $OPTIND -lt $# ]];do
 		if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashBlacklist WHERE MD5='$OPTARG' OR SHA256='$OPTARG';") -eq 0 ]]; then
 			if [[ $(echo -n "$OPTARG" | wc -c) -eq 32 ]]; then	# MD5
 				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO HashBlacklist (MD5) VALUES ('$OPTARG');"
+				SHA256=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT SHA256 FROM Logs WHERE MD5='$OPTARG' LIMIT 1;")
+				if [[ -n $SHA256 ]]; then
+					mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$SHA256';"
+				fi
 				echo "$OPTARG has been added to the blacklist"
 				exit 0
 			elif [[ $(echo -n "$OPTARG" | wc -c) -eq 64 ]]; then # SHA256
 				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO HashBlacklist (SHA256) VALUES ('$OPTARG');"
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$SHA256';"
+				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$OPTARG';"
 				echo "$OPTARG has been added to the blacklist"
 				exit 0
 			else
