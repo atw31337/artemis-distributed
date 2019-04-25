@@ -291,7 +291,7 @@ cp ./artemisFInit /usr/sbin/
 cp ./extract.conf "$EXTLOC"
 cp ./forwarder-setup /opt/artemis/
 
-# Reload systemctl
+# Reload systemctl and enable the Artemis service on boot
 systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
 
 # Generate ssh key pair
