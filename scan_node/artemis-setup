@@ -420,7 +420,7 @@ echo "Generating /etc/artemis.conf..."
 genConf > /etc/artemis.conf
 
 # Create database
-if [[ -z $( mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SHOW DATABASES LIKE 'artemis';") ]]; then
+if [[ -z $(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SHOW DATABASES LIKE 'artemis';") ]]; then
         echo "Building database..."
         mysql --defaults-file=/etc/mysql/debian.cnf -e "CREATE DATABASE artemis;"
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Cache (HashID int NOT NULL AUTO_INCREMENT, Hash char(64) NOT NULL, Result tinyint(1), Hits int NOT NULL, \
