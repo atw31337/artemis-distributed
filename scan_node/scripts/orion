@@ -24,8 +24,12 @@ exec 2> /var/log/artemis.err
 
 sendAlert() {
 TFILE=$(mktemp -p /tmp/artemis/) # Temporary file for alert email output
+VSIG=$(grep "$FILENAME" /var/log/virus-scan.log | cut -d' ' -f2)        # Virus signature from ClamScan output
 printf "From: %s\nTo: %s\nSubject: Malware Detected!\n\n" "$HOSTNAME" "$EMAIL"  > "$TFILE"
-printf "%s: %s has detected malware on the network.\n " "$TSTAMP" "$HOSTNAME" >> "$TFILE"
+printf "%s: %s has detected malware on the network.\n" "$TSTAMP" "$HOSTNAME" >> "$TFILE"
+if [[ -n $VSIG ]]; then
+	printf "Scan Result: %s\n" "$VSIG"
+fi
 printf "SHA256: %s\n" "$SHA256" >> "$TFILE"
 printf "MD5: %s\n" "$MD5" >> "$TFILE"
 if [[ -n $IDIR ]]; then
