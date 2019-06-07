@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: artemis-setup
 # Description: Installation script for Artemis Network Traffic Virus Monitor
-# Version: 1.07
+# Version: 1.08
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.07
+VERSION=1.08
 
 usage ()
 {
@@ -383,8 +383,7 @@ fi
 if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq clamav-daemon; then
        echo "Installing clamav..."
         apt-get -y install clamav-daemon > /dev/null 2>&1
-        echo "Fetching a fresh clam..."
-        freshclam > /dev/null 2>&1
+        service clamav-freshclam restart
 fi
 if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq mysql-server; then
         echo "Installing mysql-server..."
@@ -469,6 +468,9 @@ systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
 
 # Reload syslog-ng
 service syslog-ng restart
+
+echo Starting clamav-daemon...
+service clamav-daemon restart
 
 echo "Installation complete"
 echo "Starting Artemis..."
