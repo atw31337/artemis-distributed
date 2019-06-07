@@ -107,13 +107,16 @@ the currently installed version of Artemis
 Artemis Network Traffic Virus Monitor
 Usage: artemis [OPTION]
 
-        Options:
+	Options:
 
-                -h                      This message
-                -v                      Print version information
-                -f                      Flush the hash cache
-                -w <Hash>        	Add a SHA256 or MD5 hash to the whitelist
-                -b <Hash>        	Add a SHA256 or MD5 hash to the blacklist
+		-h			This message
+		-v			Print version information
+		-f <file>		Force process a file
+		-p			Purge the hash cache
+		-s <Source IPv4>	Add a source IP to the whitelist
+		-o <Source IPv4>	Add a source IP to the blacklist
+		-w <Hash>		Add a SHA256 or MD5 hash to the whitelist
+		-b <Hash>		Add a SHA256 or MD5 hash to the blacklist
 
 
 ############################### Auxiliary Scripts ###########################################
@@ -122,29 +125,30 @@ arteLog - Artemis log interface
 Usage: arteLog [Time OPTION]...[Query OPTION]
 If no Time option is selected or if it is placed after the Query option, the time period will default to the last 24 hours
 
-        Time Period Options:
-                -D <YYYY-MM-HH>         Specific date
-                -M <YYYY-MM>            Specific month
-                -Y <YYYY>               Specific year
-                -H <HH>                 Specific hour of current day
-                -d <n>                  Last n number of days
-                -w <n>                  Last n number of weeks
-                -m <n>                  Last n number of months
-                -y <n>                  Last n number of years
-                -r <n>                  Last n number of hours
-                -i <n>                  Last n number of minutes
-                -R <Start> <End>        Specific start and end Date/Time in YYYY-MM-DD HH:MM:SS format
-                -a                      all
+	Time Period Options:
+		-D <YYYY-MM-HH>		Specific date
+		-M <YYYY-MM>		Specific month
+		-Y <YYYY>		Specific year
+		-H <HH>			Specific hour of current day
+		-d <n>			Last n number of days
+		-w <n>			Last n number of weeks
+		-m <n>			Last n number of months
+		-y <n>			Last n number of years
+		-r <n>			Last n number of hours
+		-i <n>			Last n number of minutes
+		-R <Start> <End>	Specific start and end Date/Time in YYYY-MM-DD HH:MM:SS format
+		-a			all
 
-        Query options:
-                -F <SHA256 Hash>                Query file(s) by hash
-                -S <Source IP>                  Query file(s) by source IP address
-                -T <Destination IP>             Query file(s) by destination IP address
-                -I <Source or Destination IP>   Query files(s) by Source or Destination IP address
-                -f <Filename>                   Query file by filename
+	Query options:
+		-F <SHA256 Hash>		Query file(s) by hash
+		-e <MD5 Hash>                   Query file(s) by MD5 hash
+		-S <Source IP>			Query file(s) by source IP address
+		-T <Destination IP>		Query file(s) by destination IP address
+		-I <Source or Destination IP>	Query files(s) by Source or Destination IP address
+		-f <Filename>			Query file by filename
 
-        Additional option:
-                -p                              Purge all log data
+	Additional option:
+		-p				Purge all log data
 
 # Log Notes:
 ## Field codes:
@@ -170,18 +174,18 @@ arteStat - Artemis statistical report generator
 Usage: arteStat [OPTION]...
 If no option is used, the report period will default to the previous 24 hours
 
-        Report Period Options:
-                -D <YYYY-MM-HH>         Specific date
-                -M <YYYY-MM>            Specific month
-                -Y <YYYY>               Specific year
-                -H <HH>                 Specific hour of current day
-                -d <n>                  Last n number of days
-                -w <n>                  Last n number of weeks
-                -m <n>                  Last n number of months
-                -y <n>                  Last n number of years
-                -r <n>                  Last n number of hours
-                -i <n>                  Last n number of minutes
-                -R <Start> <End>        Specific start and end Date/Time in YYYY-MM-DD HH:MM:SS format
+	Report Period Options:
+		-D <YYYY-MM-HH>		Specific date
+		-M <YYYY-MM>		Specific month
+		-Y <YYYY>		Specific year
+		-H <HH>			Specific hour of current day
+		-d <n>			Last n number of days
+		-w <n>			Last n number of weeks
+		-m <n>			Last n number of months
+		-y <n>			Last n number of years
+		-r <n>			Last n number of hours
+		-i <n>			Last n number of minutes
+		-R <Start> <End>	Specific start and end Date/Time in YYYY-MM-DD HH:MM:SS format
 
 
 # exit
