@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: artemis-setup
 # Description: Installation script for Artemis Network Traffic Virus Monitor
-# Version: 1.06
+# Version: 1.07
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.06
+VERSION=1.07
 
 usage ()
 {
@@ -441,7 +441,7 @@ if [[ -z $(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SHOW DATABASES LI
 fi
 
 # Create a user group for the forwarder nodes
-groupadd artemis
+groupadd artemis 2> /dev/null
 
 # Copy files to appropriate locations
 echo Copying files...
@@ -458,7 +458,7 @@ if ! [[ -d /opt/artemis/extracted/ ]]; then
 fi
 cp ./artemis-setup ../README ./scripts/parsOpts.sh /opt/artemis/
 cp ./scripts/artemis ./scripts/extract-cleanup ./scripts/artemis-logfile-cleanup ./scripts/artemis-brolog-cleanup  ./scripts/scavenger \
-./scripts/artemis-logRepair ./scripts/orion ./scripts/arteStat ./scripts/arteLog ./scripts/hashdb_load ./scripts/artemis-logstable-cleanup /usr/bin/
+./scripts/artemis-logRepair ./scripts/orion ./scripts/arteStat ./scripts/arteLog ./scripts/artemis-logstable-cleanup /usr/bin/
 cp ./scripts/artemisInit /usr/sbin/artemisInit
 
 cp ./conf/artemis /etc/cron.d/

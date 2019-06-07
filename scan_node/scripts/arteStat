@@ -1,7 +1,6 @@
 #!/bin/bash
 # Title: arteStat
 # Description: arteStat is a front-end interface that enables users to easily create custom reports based on Artemis' statistical data.
-# Version: 1.00.00
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -180,3 +179,12 @@ echo "File Type Percentages:"
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileType, CONCAT(ROUND(( COUNT(*)/(SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END')\
 ) * 100), 2), '%') AS Percentage from Logs WHERE (DateTime BETWEEN '$START' AND '$END') GROUP BY FileType ORDER BY COUNT(*) DESC;"
 echo
+NID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND (Result=1 OR Result=4);")
+echo "Number of Infections Detected: $NID"
+echo
+if [[ $NID -gt 0 ]]; then
+	echo "Infections Detected:"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, FileName, SHA256, MD5, Source, Destination FROM Logs WHERE \
+	(DateTime BETWEEN '$START' AND '$END') AND (Result=1 OR Result=4);"
+	echo
+fi
