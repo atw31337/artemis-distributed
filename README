@@ -32,7 +32,7 @@
 # Artemis was designed for, and tested on, Ubuntu 16.04 running Security Onion NSM.     #
 # At a minimum, Artemis requires that the Bro NSM be installed. Bro is utilized         #
 # to extract executable files from the network data stream allowing them to be		#  
-# inspected for known viruses. Artemis "may" be compatible with other flavors of Debian #          #
+# inspected for known viruses. Artemis "may" be compatible with other flavors of Debian #
 # Linux, so long as the systemd service manager is utilized; however, Ubuntu is the     #
 # only flavor that has been tested and is currently supported.                          #
 #                                                                                       #
@@ -123,7 +123,7 @@ Usage: artemis [OPTION]
 
 arteLog - Artemis log interface
 Usage: arteLog [Time OPTION]...[Query OPTION]
-If no Time option is selected or if it is placed after the Query option, the time period will default to the last 24 hours
+If no Time option is selected, the time period will default to the last 24 hours
 
 	Time Period Options:
 		-D <YYYY-MM-HH>		Specific date
