@@ -140,7 +140,7 @@ If no Time option is selected, the time period will default to the last 24 hours
 		-a			all
 
 	Query options:
-		-F <SHA256 Hash>		Query file(s) by hash
+		-F <SHA256 Hash>		Query file(s) by SHA256 hash
 		-e <MD5 Hash>                   Query file(s) by MD5 hash
 		-S <Source IP>			Query file(s) by source IP address
 		-T <Destination IP>		Query file(s) by destination IP address
