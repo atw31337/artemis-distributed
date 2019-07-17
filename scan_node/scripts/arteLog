@@ -199,12 +199,12 @@ elif [[ -n $MD5 ]]; then
 	fi
 elif [[ -n $SOD ]]; then
 	if [[ $ALL -eq 1 ]]; then
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileSize, ScanTime, QTime, FileType, \
-		Source, Destination FROM Logs WHERE FileName='$SOD';"
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileName, FileSize, ScanTime, \
+		QTime, FileType, Source, Destination FROM Logs WHERE (Source='$SOD' OR Destination='$SOD');"
 		exit 0
 	else
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileSize, ScanTime, QTime, FileType, \
-		Source, Destination FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND FileName='$SOD';"
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "SELECT DateTime, SHA256, MD5, Scanned, Queued, Result, FileName, FileSize, ScanTime, \
+		QTime, FileType, Source, Destination FROM Logs WHERE (DateTime BETWEEN '$START' AND '$END') AND (Source='$SOD' OR Destination='$SOD');"
 		exit 0
 	fi
 elif [[ -n $FILE ]]; then
