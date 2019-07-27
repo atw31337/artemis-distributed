@@ -68,17 +68,9 @@ sendmail -vt < "$TFILE"
 rm -f "$TFILE"
 }
 
-file_integrity_chk() {	 # checks and, if necessary, waits for a file to finish being written to disk
-local hash
-while [[ $(md5sum "$1" | cut -d' ' -f1) != $hash ]]; do
-	hash=$(md5sum "$1" | cut -d' ' -f1)
-	sleep 0.1
-done
-}
-
 autoStop() {
-service artemis stop && pkill -9 clamscan
 printf "%s: Low memory detected! Emergency stop sequence activated." "$(date)" >> /var/log/artemis.err
+service artemis stop && pkill -9 clamscan
 exit
 }
 
@@ -228,9 +220,13 @@ for (( ; ; )); do
 		while [[ $(ls -A /opt/artemis/cache/workers/ | wc -l) -ge $MAXPROC ]]; do
 			sleep 0.05
 		done
-		filescan "$FILE" &
-		# Add the worker to the workers pid directory
-		touch /opt/artemis/cache/workers/$!.pid
+		if [[ -f $FILE ]]; then
+			filescan "$FILE" &
+			# Add the worker to the workers pid directory
+			touch /opt/artemis/cache/workers/$!.pid
+		else
+			echo "$(date): $FILE - File not found! Skipping file." >> /var/log/artemis.err
+		fi
 	fi
 done
 
