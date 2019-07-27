@@ -20,7 +20,7 @@
 
 CONF=/etc/artemis.conf
 
-exec 2> /var/log/artemis.err
+exec 2>> /var/log/artemis.err
 
 sendAlert() {
 TFILE=$(mktemp -p /tmp/artemis/) # Temporary file for alert email output

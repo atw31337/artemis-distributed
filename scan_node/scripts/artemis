@@ -220,7 +220,7 @@ else	# Hash does not exist in the Whitelist, Blacklist, or Cache tables
 fi
 }
 
-exec 2> /var/log/artemis.err
+exec 2>> /var/log/artemis.err
 
 # Got r00t?
 if [[ $(id -u) -ne 0 ]]; then
