@@ -70,7 +70,7 @@ rm -f "$TFILE"
 
 autoStop() {
 printf "%s: Low memory detected! Emergency stop sequence activated." "$(date)" >> /var/log/artemis.err
-service artemis stop && pkill -9 clamscan
+service artemis stop && pkill -9 clamdscan
 exit
 }
 
@@ -206,7 +206,11 @@ if [[ -z "$MAXPROC" ]] || [[ -z "$MAXHASH" ]] || [[ -z "$EMAIL" ]] || [[ -z "$DI
 	exit 1
 fi
 
-for (( ; ; )); do
+# Set a signal trap to initiate a graceful process shutdown
+SIGNAL=0
+trap  "((SIGNAL++))" SIGHUP
+
+while [[ $SIGNAL -eq 0 ]]; do
 	if [[ $(free | head -n2 | tail -n1 | awk '{print $4}') -lt 51200 ]]; then	# If free memory drops below 50 MB, Artemis initiates an automatic stop
 		autoStop
 	fi
@@ -229,5 +233,8 @@ for (( ; ; )); do
 		fi
 	fi
 done
+
+# Wait for the workers to finish their current task
+wait
 
 exit

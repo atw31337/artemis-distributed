@@ -388,9 +388,14 @@ do
 	prescan "$FILE" &
 done
 
-# Shutdown
-pkill -1 orion
-pkill -1 clamdscan
+# Shutdown orion
+ORIONPID=$(pgrep -o orion)
+kill -1 $ORIONPID
+
+# Wait for Orion to shutdown
+while [[ -n $(pgrep orion) ]]; do
+	sleep 0.5
+done
 
 # Cleanup
 umount /opt/artemis/cache/
@@ -402,5 +407,5 @@ if [[ -d /tmp/artemis/ ]] && ! [[ -d /tmp/artemis/logRepair ]]; then
 	rm -rf /tmp/artemis/
 fi
 
-pkill -x -9 artemis
+pkill -x -1 artemis
 exit
