@@ -381,21 +381,22 @@ fi
 mkdir /opt/artemis/cache/workers/
 
 # Start the Orion scanner
-/usr/bin/orion &
+/usr/bin/orion & ORIONPID=$!
 
+# Begin extraction directory monitoring
 inotifywait -q -m -e create,moved_to --format '%w%f' "$DIR" | while read FILE
 do
 	prescan "$FILE" &
 done
 
 # Shutdown orion
-ORIONPID=$(pgrep -o orion)
 kill -1 $ORIONPID
 
-# Wait for Orion to shutdown
-while [[ -n $(pgrep orion) ]]; do
-	sleep 0.5
-done
+# Wait for orion to stop
+wait $ORIONPID
+
+# Kill any remaining child processes
+kill $(pgrep -x artemis | grep -v $$) 2> /dev/null
 
 # Cleanup
 umount /opt/artemis/cache/
@@ -407,5 +408,4 @@ if [[ -d /tmp/artemis/ ]] && ! [[ -d /tmp/artemis/logRepair ]]; then
 	rm -rf /tmp/artemis/
 fi
 
-pkill -x -1 artemis
 exit
