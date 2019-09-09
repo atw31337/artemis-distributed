@@ -29,7 +29,7 @@ Usage: arteLog [Time OPTION]...[Query OPTION]
 If no Time option is selected, then the time period will default to the last 24 hours
 
 	Time Period Options:
-		-D <YYYY-MM-HH>		Specific date
+		-D <YYYY-MM-DD>		Specific date
 		-M <YYYY-MM>		Specific month
 		-Y <YYYY>		Specific year
 		-H <HH>			Specific hour of current day
