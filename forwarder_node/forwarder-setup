@@ -297,7 +297,7 @@ cp ./extract.conf /opt/artemis/
 cp ./forwarder-setup /opt/artemis/
 
 # Set up cronjob for broExtConfigCheck
-echo "*/15 * * * * root /usr/bin/broExtConfigCheck" > /etc/cron.d/artemis
+echo "*/15 * * * * root /usr/bin/broExtConfigCheck > /dev/null 2>&1" > /etc/cron.d/artemis
 
 # Reload systemctl and enable the Artemis service on boot
 systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
