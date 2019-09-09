@@ -56,6 +56,8 @@ SCANNER=$SCANNER
 # Source directory. Directory to be monitored by Artemis. All files added to this directory will be inspected by Artemis.
 SDIR=$SDIR
 
+# Location of the extract.bro config file
+EXT=$EXTLOC
 EOF
 chmod 600 /etc/artemis.conf
 }
@@ -92,6 +94,7 @@ fi
 
 echo "Removing files..."
 rm /usr/bin/artemis-forwarder /usr/sbin/artemisFInit /lib/systemd/system/artemis-forwarder.service /var/log/artemis.err > /dev/null 2>&1
+rm /etc/cron.d/artemis > /dev/null 2>&1
 rm -r /opt/artemis/ > /dev/null 2>&1
 # Remove ssh key pair
 ssh-keygen -f "/root/.ssh/known_hosts" -R $(grep SCANNER /etc/artemis.conf | cut -d'=' -f2) > /dev/null 2>&1
@@ -286,10 +289,15 @@ if ! [[ -d /opt/artemis ]]; then
 fi
 cp ../README /opt/artemis/
 cp ./artemis-forwarder /usr/bin/
+cp ./broExtConfigCheck /usr/bin/
 cp ./artemis-forwarder.service /lib/systemd/system/
 cp ./artemisFInit /usr/sbin/
 cp ./extract.conf "$EXTLOC"
+cp ./extract.conf /opt/artemis/
 cp ./forwarder-setup /opt/artemis/
+
+# Set up cronjob for broExtConfigCheck
+echo "*/15 * * * * root /usr/bin/broExtConfigCheck" > /etc/cron.d/artemis
 
 # Reload systemctl and enable the Artemis service on boot
 systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
@@ -304,7 +312,7 @@ echo "Enter the username of the account that should be used to connect to the sc
 read -p "The account must have sudo privileges during installation: " USERNAME
 ssh-copy-id -i /root/.ssh/artemis -o StrictHostKeyChecking=no "$USERNAME"@"$SCANNER"
 ssh -qti /root/.ssh/artemis "$USERNAME"@"$SCANNER" 'sudo usermod -a -G artemis $(logname)'
-printf "\nLOG=%s" "$USERNAME" >> /etc/artemis.conf
+printf "\n# Do not alter\nLOG=%s" "$USERNAME" >> /etc/artemis.conf
 
 # Remove mlocate if it was not previously installed
 if [[ $CLEAN -eq 1 ]]; then
