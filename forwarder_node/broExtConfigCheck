@@ -1,0 +1,11 @@
+#!/bin/bash
+# Title: broExtConfigCheck
+# Description: Checks the contents of extract.bro against the extract.conf file in /opt/artemis/. If the bro extract configuration has been altered, it will
+# be replaced by the preconfigured file in /opt/artemis/.
+# Author: Andrew T. Withers (atw31337@gmail.com)
+
+configLocation=$(grep "EXT" /etc/artemis.conf | cut -d'=' -f2)
+cmp --silent "$configLocation" /opt/artemis/extract.conf || cp /opt/artemis/extract.conf "$configLocation" && so-bro-restart
+exit
+
+
