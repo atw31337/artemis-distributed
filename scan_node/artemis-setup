@@ -81,7 +81,7 @@ uninstall () {
 # Check for a running instance of Artemis
 if [[ -n $(pgrep -x artemis) ]]; then
 	echo "Shutting down Artemis..."
-	systemctl stop artemis || echo "Failed to shutdown artemis...aborting uninstall" && exit 1 2> /dev/null
+	systemctl stop artemis
 fi
 read -p 'Would you like to uninstall bc? [y/N]: ' ANSWER
 if [[ ${ANSWER,,} == 'y' ]]; then
