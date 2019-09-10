@@ -67,7 +67,7 @@ uninstall () {
 # Checking for a running instance of artemis-forwarder
 if [[ -n $(pgrep -x artemis-forward) ]]; then
 	echo "Shutting down Artemis-forwarder..."
-	systemctl stop artemis || echo "Failed to shutdown artemis...aborting uninstall" && exit 1 2> /dev/null
+	systemctl stop artemis-forwarder || echo "Failed to shutdown artemis...aborting uninstall" && exit 1 2> /dev/null
 fi
 
 read -p 'Would you like to uninstall syslog-ng? [y/N]: ' ANSWER
@@ -98,7 +98,7 @@ echo "Removing files..."
 [[ -f /etc/cron.d/artemis ]] && rm /etc/cron.d/artemis
 [[ -f /var/log/artemis.err ]] && rm /var/log/artemis.err
 # Remove artemis service
-systemctl disable artemis > /dev/null 2>&1
+systemctl disable artemis-forwarder > /dev/null 2>&1
 [[ -f /usr/sbin/artemisFInit ]] && rm /usr/sbin/artemisFInit
 [[ -f /lib/systemd/system/artemis-forwarder.service ]] && rm /lib/systemd/system/artemis-forwarder.service
 systemctl daemon-reload && systemctl reset-failed > /dev/null 2>&1
