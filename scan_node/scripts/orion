@@ -234,7 +234,4 @@ while [[ $SIGNAL -eq 0 ]]; do
 	fi
 done
 
-# Wait for the workers to finish their current task
-wait
-
 exit
