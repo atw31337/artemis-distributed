@@ -243,7 +243,7 @@ while getopts ":huf:" OPT; do
         esac
 done
 
-echo "Checking version information..."
+echo "Preparing for installation..."
 # bc is required to check version info
 apt-get update -qq
 if ! dpkg --get-selections | grep -v deinstall | grep -wq bc; then
@@ -251,6 +251,7 @@ if ! dpkg --get-selections | grep -v deinstall | grep -wq bc; then
 fi
 
 # Check for previous version
+echo "Checking version information..."
 if [[ -e /opt/artemis/artemis-setup ]]; then
         # Verify that the old setup script version corresponds to the version of Artemis that is currently installed and that
         # it is less than the version that is about to be installed
