@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: artemis-setup
 # Description: Installation script for Artemis Network Traffic Virus Monitor
-# Version: 1.08
+# Version: 1.09
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.08
+VERSION=1.09
 
 usage ()
 {
@@ -81,7 +81,7 @@ uninstall () {
 # Check for a running instance of Artemis
 if [[ -n $(pgrep -x artemis) ]]; then
 	echo "Shutting down Artemis..."
-	service artemis stop
+	systemctl stop artemis || echo "Failed to shutdown artemis...aborting uninstall" && exit 1 2> /dev/null
 fi
 read -p 'Would you like to uninstall bc? [y/N]: ' ANSWER
 if [[ ${ANSWER,,} == 'y' ]]; then
@@ -93,7 +93,7 @@ fi
 read -p 'Would you like to uninstall postfix? [y/N]: ' ANSWER
 if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing postfix..."
-        service postfix stop
+        systemctl stop postfix
 	apt-get -y purge postfix > /dev/null 2>&1
 else
 	echo "postfix will not be uninstalled."
@@ -108,7 +108,7 @@ fi
 read -p 'Would you like to uninstall syslog-ng? [y/N]: ' ANSWER
 if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing syslog-ng..."
-	service syslog-ng stop
+	systemctl stop syslog-ng
 	apt-get -y purge syslog-ng-core > /dev/null 2>&1
 else
 	echo "syslog-ng will not be uninstalled."
@@ -120,7 +120,7 @@ fi
 read -p 'Would you like to uninstall clamav? [y/N]: ' ANSWER
 if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing clamav..."
-	service clamav-daemon stop
+	systemctl stop clamav-daemon
 	apt-get -y purge "$(dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep clamav)" > /dev/null 2>&1
 else
 	echo "clamav will not be uninstalled."
@@ -128,7 +128,7 @@ fi
 read -p 'Would you like to uninstall openssh-server [y/N]: ' ANSWER
 if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing openssh-server..."
-	service ssh stop
+	systemctl stop ssh
 	apt-get -y purge openssh-server > /dev/null 2>&1
 else
 	echo "openssh-server will not be uninstalled."
@@ -140,7 +140,7 @@ if [[ ${ANSWER,,} == 'y' ]]; then
 	read -p 'Would you like to uninstall mysql? [y/N]: ' ANSWER
 	if [[ ${ANSWER,,} == 'y' ]]; then
 		echo "Removing mysql..."
-		service mysql stop > /dev/null 2>&1
+		systemctl stop mysql > /dev/null 2>&1
 		apt-get --yes purge mysql* > /dev/null 2>&1
 		apt-get --yes autoremove --purge > /dev/null 2>&1
 		apt-get autoclean > /dev/null 2>&1
@@ -159,14 +159,25 @@ else
 	echo "Log files will be retained."
 fi
 echo "Removing files..."
-rm /etc/artemis.conf /usr/bin/artemis /usr/bin/orion /usr/bin/arteStat /usr/bin/arteLog /usr/bin/artemis-brolog-cleanup
-rm /usr/bin/artemis-logfile-cleanup /usr/bin/artemis-logstable-cleanup /usr/bin/artemis-logRepair /usr/bin/scavenger
-systemctl stop artemis && systemctl disable artemis > /dev/null 2>&1
-rm /lib/systemd/system/artemis.service /usr/sbin/artemisInit
+[[ -f /usr/bin/artemis ]] && rm /usr/bin/artemis
+[[ -f /usr/bin/orion ]] &&  rm /usr/bin/orion
+[[ -f /usr/bin/arteStat ]] && rm /usr/bin/arteStat
+[[ -f /usr/bin/arteLog ]] && rm /usr/bin/arteLog
+[[ -f /usr/bin/artemis-brolog-cleanup ]] && rm /usr/bin/artemis-brolog-cleanup
+[[ -f /usr/bin/artemis-logfile-cleanup ]] && rm /usr/bin/artemis-logfile-cleanup
+[[ -f /usr/bin/artemis-logstable-cleanup ]] && rm /usr/bin/artemis-logstable-cleanup
+[[ -f /usr/bin/artemis-logRepair ]] && rm /usr/bin/artemis-logRepair
+[[ -f /usr/bin/scavenger ]] && rm /usr/bin/scavenger
+[[ -f /etc/cron.d/artemis ]] && rm /etc/cron.d/artemis
+[[ -f /etc/artemis.conf ]] && rm /etc/artemis.conf
+# Remove artemis service
+systemctl disable artemis > /dev/null 2>&1
+[[ -f /lib/systemd/system/artemis.service ]] && rm /lib/systemd/system/artemis.service
+[[ -f /usr/sbin/artemisInit ]] && rm /usr/sbin/artemisInit
 systemctl daemon-reload && systemctl reset-failed > /dev/null 2>&1
-rm /etc/cron.d/artemis-brolog-cron /etc/cron.d/artemis-logfile-cron /etc/cron.d/artemis-logstable-cron
-rm /etc/cron.d/artemis-logRepair-cron
-rm -rf /opt/artemis/
+# Remove artemis directory
+[[ -d /opt/artemis/ ]] && rm -rf /opt/artemis/
+# Remove logs
 if [[ $LOG -eq 1 ]]; then
 	rm /var/log/artemis.err /var/log/virus-scan.log* > /dev/null 2>&1
 fi
@@ -348,7 +359,7 @@ printf "Installing scanner node: %s\n" "$HOSTNAME"
 # Check for a running instanace of Artemis
 if [[ -n $(pgrep -x artemis) ]]; then
         echo "Shutting down Artemis..."
-        service artemis stop
+        systemctl stop artemis
 fi
 
 #Install prerequisite packages if necessary
@@ -383,7 +394,7 @@ fi
 if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq clamav-daemon; then
        echo "Installing clamav..."
         apt-get -y install clamav-daemon > /dev/null 2>&1
-        service clamav-freshclam restart
+        systemctl restart clamav-freshclam
 fi
 if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq mysql-server; then
         echo "Installing mysql-server..."
@@ -467,12 +478,12 @@ cp ./conf/artemis.service /lib/systemd/system/artemis.service
 systemctl daemon-reload && systemctl enable artemis > /dev/null 2>&1
 
 # Reload syslog-ng
-service syslog-ng restart
+systemctl restart syslog-ng
 
 echo Starting clamav-daemon...
-service clamav-daemon restart
+systemctl restart clamav-daemon
 
 echo "Installation complete"
 echo "Starting Artemis..."
-service artemis start
+systemctl start artemis
 exit
