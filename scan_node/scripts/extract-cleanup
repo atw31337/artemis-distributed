@@ -5,9 +5,9 @@
 # Author: Andrew T. Withers (atw31337@gmail.com)
 
 # Max number of days to keep
-MAXDAYS=2
+MAXDAYS=3
 
-find /opt/artemis/extracted/ -type f -mtime +"$MAXDAYS" -exec rm {} \;
+find /opt/artemis/extracted/ -type f -mtime +"$((MAXDAYS-1))" -exec rm {} \;
 
 
 # Max disk usage
