@@ -380,6 +380,9 @@ fi
 # Create a woker pid directory in the cache
 mkdir /opt/artemis/cache/workers/
 
+# Truncate the Queue table. Ensures that the queue is emtpy at start up.
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE Queue;"
+
 # Start the Orion scanner
 /usr/bin/orion & ORIONPID=$!
 
