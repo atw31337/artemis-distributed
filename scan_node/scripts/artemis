@@ -372,7 +372,7 @@ fi
 if ! [[ -d /opt/artemis/cache/ ]]; then
 	mkdir -p /opt/artemis/cache/
 fi
-if  ! mount | grep -q /opt/artemis/cache ; then
+if  ! mount | grep -q /opt/artemis/cache; then
 	mount -t tmpfs -o size=2m tmpfs /opt/artemis/cache/
 	chmod 600 /opt/artemis/cache/
 fi
@@ -399,11 +399,11 @@ kill -1 $ORIONPID
 wait $ORIONPID
 
 # Kill any remaining child processes
-kill "$(pgrep -x artemis | grep -v $$)" 2> /dev/null
+kill -9 "$(pgrep -x artemis | grep -v $$)" 2> /dev/null
 
 # Cleanup
-umount /opt/artemis/cache/
-rm -rf /opt/artemis/cache/
+mount | grep /opt/artemis/cache && umount /opt/artemis/cache/
+[[ -d /opt/artemis/cache/ ]] && rm -rf /opt/artemis/cache/
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Logs WHERE Result IS NULL;"
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Result IS NULL;"
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE Queue;"
