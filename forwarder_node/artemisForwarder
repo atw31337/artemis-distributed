@@ -73,7 +73,7 @@ trap "((SIGNAL++))" SIGHUP
 rm /opt/artemis/workers/* > /dev/null 2>&1
 
 while [[ $SIGNAL -eq 0 ]]; do
-	if [[ $(free | head -n2 | tail -n1 | awk '{print $7}') -lt 204800 ]]; then      # If free memory drops below 200 MB, Artemis initiates an automatic stop
+	if [[ $(free | grep ^Mem: | awk '{print $7}') -lt 204800 ]]; then      # If free memory drops below 200 MB, Artemis initiates an automatic stop
                 autoStop
         fi
 	if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Queue;") -ne 0  ]]; then
