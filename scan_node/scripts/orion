@@ -69,10 +69,10 @@ rm -f "$TFILE"
 }
 
 autoStop() {
-printf "%s: Low memory detected! Emergency stop sequence activated." "$(date)" >> /var/log/artemis.err
+printf "%s: Low memory detected! Emergency stop sequence activated.\n" "$(date)" >> /var/log/artemis.err
 service artemis stop
-kill -9 $(pgrep -x artemis | grep -v $(pgrep -o artemis)) 2> /dev/null
-pkill -9 clamdscan
+kill -9 "$(pgrep -x artemis | grep -v $(pgrep -ox artemis))" 2> /dev/null
+pkill -9 "$(pgrep -x orion | grep -v $(pgrep -ox orion))" 2> /dev/null
 exit
 }
 
@@ -213,7 +213,7 @@ SIGNAL=0
 trap  "((SIGNAL++))" SIGHUP
 
 while [[ $SIGNAL -eq 0 ]]; do
-	if [[ $(free | head -n2 | tail -n1 | awk '{print $4}') -lt 204800 ]]; then	# If free memory drops below 200 MB, Artemis initiates an automatic stop
+	if [[ $(free | head -n2 | tail -n1 | awk '{print $7}') -lt 204800 ]]; then	# If available memory drops below 200 MB, Artemis initiates an automatic stop
 		autoStop
 	fi
 	if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Queue;") -ne 0  ]]; then

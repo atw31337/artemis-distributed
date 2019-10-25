@@ -399,7 +399,7 @@ kill -1 $ORIONPID
 wait $ORIONPID
 
 # Kill any remaining child processes
-kill $(pgrep -x artemis | grep -v $$) 2> /dev/null
+kill "$(pgrep -x artemis | grep -v $$)" 2> /dev/null
 
 # Cleanup
 umount /opt/artemis/cache/

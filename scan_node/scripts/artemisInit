@@ -22,7 +22,7 @@ start)
         /usr/bin/artemis & 2>>/var/log/artemis.err
         ;;
 stop)
-        pkill -1 "inotify"
+        pkill -9 "inotifywait"
 	while [[ -n $(pgrep -x artemis) ]]; do
 		sleep 0.1
 	done
