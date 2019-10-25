@@ -19,16 +19,14 @@
 
 case "$1" in
 start)
-        /usr/bin/artemis-collector & 2>>/var/log/artemis.err
-        echo "$!" > /opt/artemis/collector.pid
-	;;
+        /usr/bin/artemisCollector & 2>>/var/log/artemis.err
+        ;;
 stop)
         pkill -9 "inotifywait"
-	while [[ -n $(ps aux | grep $(cat /opt/artemis/collector.pid) | grep -v grep) ]]; do
+	while [[ -n $(pgrep artemisCollect) ]]; do
 		sleep 0.1
 	done
-	rm /opt/artemis/collector.pid
-        ;;
+	;;
 restart)
         $0 stop
         $0 start
