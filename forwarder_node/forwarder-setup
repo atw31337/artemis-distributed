@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: forwarder-setup
 # Description: This script will automate the tasks required to install artemis forwarder nodes in a distributed deployment architecture
-# Version: 1.02
+# Version: 1.03
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.02
+VERSION=1.03
 
 usage ()
 {
@@ -53,6 +53,9 @@ VERSION=$VERSION
 # Scanner node (FQDN)
 SCANNER=$SCANNER
 
+# Maximum number of concurrent forwarder processes
+MAXPROC=$MAXPROC
+
 # Source directory. Directory to be monitored by Artemis. All files added to this directory will be inspected by Artemis.
 SDIR=$SDIR
 
@@ -84,6 +87,7 @@ else
 	sed -i '/log { source(s_bro_logs); filter(f_ext); destination(d_artemis); };/d' /etc/syslog-ng/syslog-ng.conf
 	systemctl restart syslog-ng
 fi
+
 read -p 'Would you like uninstall inotify-tools? [y/N]: ' ANSWER
 if [[ ${ANSWER,,} == 'y' ]]; then
 	echo "Removing inotify-tools..."
@@ -92,7 +96,28 @@ else
 	echo "inotify-tools will not be uninstalled."
 fi
 
+read -p 'Would you like to uninstall mysql? [y/N]: ' ANSWER
+if [[ ${ANSWER,,} == 'y' ]]; then
+	echo "Removing mysql..."
+	systemctl stop mysql > /dev/null 2>&1
+	apt-get --yes purge mysql* > /dev/null 2>&1
+	apt-get --yes autoremove --purge > /dev/null 2>&1
+	apt-get autoclean > /dev/null 2>&1
+	deluser --remove-home mysql > /dev/null 2>&1
+	delgroup mysql > /dev/null 2>&1
+else
+	echo "mysql will not be uninstalled."
+	read -p 'Would you like to remove the Artemis database? [y/N]: ' ANSWER
+	if [[ ${ANSWER,,} == 'y' ]]; then
+		echo "Removing Artemis database..."
+		mysql --defaults-file=/etc/mysql/debian.cnf -e "DROP DATABASE artemis;"
+	else
+		echo "The database will not be removed."
+	fi
+fi
+
 echo "Removing files..."
+[[ -f /usr/bin/artemis-collector ]] && rm /usr/bin/artemis-collector
 [[ -f /usr/bin/artemis-forwarder ]] && rm /usr/bin/artemis-forwarder
 [[ -f /usr/bin/broExtConfigCheck ]] && rm /usr/bin/broExtConfigCheck
 [[ -f /etc/cron.d/artemis ]] && rm /etc/cron.d/artemis
@@ -211,16 +236,24 @@ if [[ -e /opt/artemis/forwarder-setup ]]; then
 fi
 
 read -p 'Enter the path of the directory to be monitored by Artemis [/nsm/bro/extracted/]: ' SDIR
-	if [[ -z $SDIR ]]; then
-		SDIR="/nsm/bro/extracted/"
-	fi
+if [[ -z $SDIR ]]; then
+	SDIR="/nsm/bro/extracted/"
+fi
 while [[ -z $SCANNER ]]; do
 	read -p 'Enter the FQDN (or IP) of the scanner node: ' SCANNER
 	if [[ -z $SCANNER ]]; then
 		echo "Invalid response. Try again."
 	fi
 done
-
+while ! [[ $MAXPROC =~ ^[1-9]+$ ]]; do
+	read -p 'Enter the maximum number of concurrent forwarder processes [15]: ' MAXPROC
+	if [[ -z $MAXPROC ]]; then
+		MAXPROC=15
+	fi
+	if ! [[ $MAXPROC =~ ^[1-9]+$ ]]; then
+		echo "Invalid response. Try again."
+	fi
+done
 
 # Check for a running instanace of Artemis forwarder
 if [[ -n $(pgrep -x artemis-forward) ]]; then
@@ -290,15 +323,36 @@ if ! dpkg --get-selections | grep -v deinstall | grep -q inotify-tools; then
         apt-get -y install inotify-tools > /dev/null 2>&1
 fi
 
+# Install mysql-server if necessary
+if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq mysql-server; then
+        echo "Installing mysql-server..."
+        echo "debconf debconf/frontend select noninteractive" | sudo debconf-set-selections
+        echo "mysql-server mysql-server/root_password password" | sudo debconf-set-selections
+        echo "mysql-server mysql-server/root_password_again password" | sudo debconf-set-selections
+        apt-get -y install mysql-server > /dev/null 2>&1
+        # Set a random password for the mysql root account
+        mysqladmin -u root -p'password' password "$(date +%s%N | sha256sum | base64 | head -c 32)" > /dev/null 2>&1
+fi
+
 # Create /etc/artemis.conf
 echo "Generating /etc/artemis.conf..."
 genConf
 
+# Create database
+if [[ -z $(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SHOW DATABASES LIKE 'artemis';") ]]; then
+	echo "Building database..."
+	mysql --defaults-file=/etc/mysql/debian.cnf -e "CREATE DATABASE artemis;"
+	mysql --defaults-file=/etc/mysql/debian.cnf -e "CREATE TABLE Queue (FileID int NOT NULL AUTO_INCREMENT, DateTime DATETIME NOT NULL, \
+		FileName varchar(255) NOT NULL , PRIMARY KEY (FileID)) ENGINE=InnoDB;"
+fi
+
 # Copy files
+echo "Copying files..."
 if ! [[ -d /opt/artemis ]]; then
         mkdir -p /opt/artemis/
 fi
 cp ../README /opt/artemis/
+cp ./artemis-collector /usr/bin/
 cp ./artemis-forwarder /usr/bin/
 cp ./broExtConfigCheck /usr/bin/
 cp ./artemis-forwarder.service /lib/systemd/system/
