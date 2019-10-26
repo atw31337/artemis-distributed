@@ -443,14 +443,6 @@ if [[ -z $(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SHOW DATABASES LI
                 FileType varchar(5) NOT NULL, Source varchar(255), Destination varchar(255), PRIMARY KEY (EntryID)) ENGINE=InnoDB;"
         mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE Queue (FileID int NOT NULL AUTO_INCREMENT, FileName varchar(255) NOT NULL, TimeStamp DATETIME NOT NULL, \
                 LogsID int NOT NULL, EntryTime double NOT NULL, PRIMARY KEY (FileID)) ENGINE=InnoDB;"
-	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE HashWhitelist (HashID int NOT NULL AUTO_INCREMENT, MD5 char(32), SHA256 char(64), PRIMARY KEY (HashID)) \
-		ENGINE=InnoDB;"
-	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE HashBlacklist (HashID int NOT NULL AUTO_INCREMENT, MD5 char(32), SHA256 char(64), PRIMARY KEY (HashID)) \
-		ENGINE=InnoDB;"
-	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE SourceWhitelist (EntryID int NOT NULL AUTO_INCREMENT, Source varchar(15) NOT NULL, PRIMARY KEY (EntryID)) \
-		ENGINE=InnoDB;"
-	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "CREATE TABLE SourceBlacklist (EntryID int NOT NULL AUTO_INCREMENT, Source varchar(15) NOT NULL, PRIMARY KEY (EntryID)) \
-		ENGINE=InnoDB;"
 fi
 
 # Create a user group for the forwarder nodes
