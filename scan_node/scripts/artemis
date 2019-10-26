@@ -42,10 +42,6 @@ Usage: artemis [OPTION]
 		-v			Print version information
 		-f <file>		Force process a file
 		-p	    		Purge the hash cache
-		-s <Source IPv4>	Add a source IP to the whitelist
-		-o <Source IPv4>	Add a source IP to the blacklist
-		-w <Hash>		Add a SHA256 or MD5 hash to the whitelist
-		-b <Hash>		Add a SHA256 or MD5 hash to the blacklist
 
 EOF
 }
@@ -169,7 +165,7 @@ FILENAME=$(basename "$1")      # File name only
 getSrcDst
 LogsEntry "$1" "$SHA256" "$MD5" "$FILENAME"
 HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$SHA256' LIMIT 1;")
-if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM SourceBlacklist WHERE Source='$SOURCE';") -gt 0 ]]; then
+if grep "$SOURCE" /opt/artemis/conf/blacklist | grep -vq "\#\|^$"; then		# Regex: Ignore comments and blank lines
 	# The source is present in the source blacklist
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=6 WHERE EntryID=$LOGSID;"
 	sendAlert "$1"
@@ -177,9 +173,20 @@ if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT CO
 		mv "$DIR$FILENAME" "$IDIR$FILENAME"
 		chmod 600 "$IDIR$FILENAME"
 	fi
-elif [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM SourceWhitelist WHERE Source='$SOURCE';") -gt 0 ]]; then
-	# The source is presnet in the source whitelist
+elif grep "$SOURCE" /opt/artemis/conf/whitelist | grep -vq "\#\|^$"; then
+	# The source is present in the source whitelist
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=5 WHERE EntryID=$LOGSID;"
+elif grep "$SHA256\|$MD5" /opt/artemis/conf/blacklist | grep -vq "\#\|^$"; then
+        # The hash is present in the hash blacklist
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4 WHERE EntryID=$LOGSID;"
+        sendAlert "$1"
+        if [[ -n $IDIR ]]; then
+                mv "$DIR$FILENAME" "$IDIR$FILENAME"
+                chmod 600 "$IDIR$FILENAME"
+        fi
+elif grep "$SHA256\|$MD5" /opt/artemis/conf/whitelist | grep -vq "\#\|^$"; then
+        # The hash is present in the hash whitelist
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=3 WHERE EntryID=$LOGSID;"
 elif [[ -n $HASHID ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE Hash='$SHA256' LIMIT 1;") -ne 2 ]]; then
 	# Hash is present in the Cache table and the result was not an error
 	RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
@@ -199,19 +206,6 @@ elif [[ -n $HASHID ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D art
 			fi
 		fi
 	fi
-elif [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashBlacklist WHERE MD5='$MD5';") -gt 0 ]] ||\
-	[[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashBlacklist WHERE SHA256='$SHA256';") -gt 0 ]]; then
-	# The hash is present in the hash blacklist
-	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4 WHERE EntryID=$LOGSID;"
-	sendAlert "$1"
-	if [[ -n $IDIR ]]; then
-	       	mv "$DIR$FILENAME" "$IDIR$FILENAME"
-	       	chmod 600 "$IDIR$FILENAME"
-	fi
-elif [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashWhitelist WHERE MD5='$MD5';") -gt 0 ]] ||\
-	[[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashWhitelist WHERE SHA256='$SHA256';") -gt 0 ]]; then
-	# The hash is present in the hash whitelist
-	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=3 WHERE EntryID=$LOGSID;"
 else	# Hash does not exist in the Whitelist, Blacklist, or Cache tables
 	ENTRYTIME="$(date +%s).$(date +%N | head -c3)"
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO Queue (FileName, TimeStamp, LogsID, EntryTime) VALUES ('$1', '$TSTAMP', $LOGSID, $ENTRYTIME);"
@@ -235,7 +229,7 @@ fi
 
 # Parse options
 while [[ $OPTIND -lt $# ]];do
-	parsOpts "$@" "h,help,v,f:,p,s:,o:,w:,b:"
+	parsOpts "$@" "h,help,v,f:,p"
 	case $OPT in
 	h|help)
 		usage
@@ -253,82 +247,6 @@ while [[ $OPTIND -lt $# ]];do
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE Cache;" > /dev/null
 		echo "Artemis: Cache has been purged"
 		exit 0
-		;;
-	s)
-		if [[ $(echo -n "$OPTARG" | wc -c) -le 15 ]]; then
-			if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM SourceWhitelist WHERE Source='$OPTARG';") -eq 0 ]]; then
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO SourceWhitelist (Source) VALUES ('$OPTARG');"
-				echo "$OPTARG has been added to the whitelist"
-			else
-				echo "$OPTARG already exists in the whitelist"
-			fi
-			exit 0
-		else
-			echo "Invalid IPv4 address"
-			exit 1
-		fi
-		;;
-	o)
-		if [[ $(echo -n  "$OPTARG" | wc -c) -le 15 ]]; then
-			if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM SourceBlacklist WHERE Source='$OPTARG';") -eq 0 ]]; then
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO SourceBlacklist (Source) VALUES ('$OPTARG');"
-				echo "$OPTARG has been added to the blacklist"
-			else
-				echo "$OPTARG already exists in the blacklist"
-			fi
-			exit 0
-		else
-			echo "Invalid IPv4 address"
-			exit 1
-		fi
-		;;
-	w)
-		if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashWhitelist WHERE MD5='$OPTARG' OR SHA256='$OPTARG';") -eq 0 ]]; then
-			if [[ $(echo -n "$OPTARG" | wc -c) -eq 32 ]]; then 	# MD5
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO HashWhitelist (MD5) VALUES ('$OPTARG');"
-				SHA256=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT SHA256 FROM Logs WHERE MD5='$OPTARG' LIMIT 1;")
-				if [[ -n $SHA256 ]]; then
-					mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$SHA256';"
-				fi
-				echo "$OPTARG has been added to the whitelist"
-				exit 0
-			elif [[ $(echo -n "$OPTARG" | wc -c) -eq 64 ]]; then # SHA256
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO HashWhitelist (SHA256) VALUES ('$OPTARG');"
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$OPTARG';"
-				echo "$OPTARG has been added to the whitelist"
-				exit 0
-			else
-				echo "Invalid hash value"
-				exit 1
-			fi
-		else
-			echo "$OPTARG already exists in the whitelist"
-			exit 1
-		fi
-		;;
-	b)
-		if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM HashBlacklist WHERE MD5='$OPTARG' OR SHA256='$OPTARG';") -eq 0 ]]; then
-			if [[ $(echo -n "$OPTARG" | wc -c) -eq 32 ]]; then	# MD5
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO HashBlacklist (MD5) VALUES ('$OPTARG');"
-				SHA256=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT SHA256 FROM Logs WHERE MD5='$OPTARG' LIMIT 1;")
-				if [[ -n $SHA256 ]]; then
-					mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$SHA256';"
-				fi
-				echo "$OPTARG has been added to the blacklist"
-				exit 0
-			elif [[ $(echo -n "$OPTARG" | wc -c) -eq 64 ]]; then # SHA256
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO HashBlacklist (SHA256) VALUES ('$OPTARG');"
-				mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Cache WHERE Hash='$OPTARG';"
-				echo "$OPTARG has been added to the blacklist"
-				exit 0
-			else
-				echo "Invalid hash value"
-				exit 1
-			fi
-		else
-			echo "$OPTARG already exists in the blacklist"
-			exit 1
-		fi
 		;;
 	\?)
 		usage

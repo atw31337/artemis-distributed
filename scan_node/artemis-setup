@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: artemis-setup
 # Description: Installation script for Artemis Network Traffic Virus Monitor
-# Version: 1.09
+# Version: 1.10
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.09
+VERSION=1.10
 
 usage ()
 {
@@ -170,13 +170,15 @@ echo "Removing files..."
 [[ -f /usr/bin/scavenger ]] && rm /usr/bin/scavenger
 [[ -f /etc/cron.d/artemis ]] && rm /etc/cron.d/artemis
 [[ -f /etc/artemis.conf ]] && rm /etc/artemis.conf
+[[ -f /opt/artemis/parsOpts.sh ]] && rm /opt/artemis/parsOpts.sh
 # Remove artemis service
 systemctl disable artemis > /dev/null 2>&1
 [[ -f /lib/systemd/system/artemis.service ]] && rm /lib/systemd/system/artemis.service
 [[ -f /usr/sbin/artemisInit ]] && rm /usr/sbin/artemisInit
 systemctl daemon-reload && systemctl reset-failed > /dev/null 2>&1
-# Remove artemis directory
-[[ -d /opt/artemis/ ]] && rm -rf /opt/artemis/
+# Remove artemis directories
+[[ -d /opt/artemis/logs/ ]] && rm -rf /opt/artemis/logs
+[[ -d /opt/artemis/extracted/ ]] && rm -rf /opt/artemis/extracted
 # Remove logs
 if [[ $LOG -eq 1 ]]; then
 	rm /var/log/artemis.err /var/log/virus-scan.log* > /dev/null 2>&1
@@ -456,17 +458,34 @@ groupadd artemis 2> /dev/null
 
 # Copy files to appropriate locations
 echo Copying files...
-if ! [[ -d /opt/artemis/ ]]; then
-        mkdir -pm 770 /opt/artemis/
-	chgrp -R artemis /opt/artemis/
-fi
-if ! [[ -d /opt/artemis/logs/ ]]; then
-	mkdir -m 600 /opt/artemis/logs/
-fi
-if ! [[ -d /opt/artemis/extracted/ ]]; then
-	mkdir -m 770 /opt/artemis/extracted/
-	chgrp -R artemis /opt/artemis/extracted/
-fi
+! [[ -d /opt/artemis/ ]] && mkdir -pm 770 /opt/artemis/ && chgrp -R artemis /opt/artemis/
+! [[ -d /opt/artemis/logs/ ]] && mkdir -m 600 /opt/artemis/logs/
+! [[ -d /opt/artemis/extracted/ ]] && mkdir -m 770 /opt/artemis/extracted/ && chgrp -R artemis /opt/artemis/extracted/
+! [[ -d /opt/artemis/conf/ ]] &&  mkdir -m 640 /opt/artemis/conf/
+! [[ -f /opt/artemis/conf/whitelist ]] && cat << EOF > /opt/artemis/conf/whitelist
+# Artemis whitelist
+# Add IP addresses and file hashes that you would like Artemis to ignore
+#
+# Whitelisted Source IP Addresses
+
+
+
+# Whitelisted File Hashes (SHA256 or MD5)
+
+
+EOF
+! [[ -f /opt/artemis/conf/blacklist ]] && cat << EOF > /opt/artemis/conf/blacklist
+# Artemis blacklist
+# Add IP addresses and file hashes that you would like Artemis to immediately alert on
+#
+# Blacklisted Source IP Addresses
+
+
+
+# Blacklisted File Hashes (SHA256 or MD5)
+
+
+EOF
 cp ./artemis-setup ../README ./scripts/parsOpts.sh /opt/artemis/
 cp ./scripts/artemis ./scripts/extract-cleanup ./scripts/artemis-logfile-cleanup ./scripts/artemis-brolog-cleanup  ./scripts/scavenger \
 ./scripts/artemis-logRepair ./scripts/orion ./scripts/arteStat ./scripts/arteLog ./scripts/artemis-logstable-cleanup /usr/bin/
