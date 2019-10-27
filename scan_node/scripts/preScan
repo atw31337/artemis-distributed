@@ -1,0 +1,251 @@
+#!/bin/bash
+# Title: artemis
+#
+#
+#   ________  ________  _________  _______   _____ ______   ___  ________
+#  |\   __  \|\   __  \|\___   ___\\  ___ \ |\   _ \  _   \|\  \|\   ____\
+#  \ \  \|\  \ \  \|\  \|___ \  \_\ \   __/|\ \  \\\__\ \  \ \  \ \  \___|_
+#   \ \   __  \ \   _  _\   \ \  \ \ \  \_|/_\ \  \\|__| \  \ \  \ \_____  \
+#    \ \  \ \  \ \  \\  \|   \ \  \ \ \  \_|\ \ \  \    \ \  \ \  \|____|\  \
+#     \ \__\ \__\ \__\\ _\    \ \__\ \ \_______\ \__\    \ \__\ \__\____\_\  \
+#      \|__|\|__|\|__|\|__|    \|__|  \|_______|\|__|     \|__|\|__|\_________\
+#                                                                  \|_________|
+#
+#
+#
+# This program is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with this program.
+# If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
+
+CONF=/etc/artemis.conf
+
+autoStop() {
+printf "%s: Low memory detected! Emergency stop sequence activated.\n" "$(date)" >> /var/log/artemis.err
+service artemis stop
+kill -9 "$(pgrep -x orion)" 2> /dev/null
+kill -9 "$(pgrep -x preScan | grep -v $BASHPID)" 2> /dev/null
+exit
+}
+
+LogsEntry() {
+SIZE=$(du -b "$1" | awk '{print $1}')
+# If the filename contains a . then set the last extension as the filetype; otherwise make the filetype blank
+if echo "$4" | grep -q "\."; then
+	FILETYPE=$(echo "$4" | rev | cut -d'.' -f1 | rev)
+	if [[ ${#FILETYPE} -gt 5 ]]; then
+		FILETYPE=$(echo "$FILETYPE" | head -c5)
+	fi
+else
+	FILETYPE=""
+fi
+LOGSID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "INSERT INTO Logs (DateTime, SHA256, MD5, FileName, FileSize, FileType, \
+Source, Destination) VALUES ('$(date +%Y-%m-%d) $(date +%T)', '$2', '$3', '$4', $SIZE, '$FILETYPE', '$SOURCE', '$DEST'); SELECT LAST_INSERT_ID();")
+}
+
+sendAlert() {
+TFILE=$(mktemp -p /tmp/artemis/)	# Temporary file for alert email output
+VSIG=$(grep "$FILENAME" /var/log/virus-scan.log | cut -d' ' -f2)	# Virus signature from ClamScan output
+printf "From: %s\nTo: %s\nSubject: Malware Detected!\n\n" "$HOSTNAME" "$EMAIL"  > "$TFILE"
+printf "%s: %s has detected malware on the network.\n" "$TSTAMP" "$HOSTNAME" >> "$TFILE"
+if [[ -n $VSIG ]]; then
+	printf "Scan Result: %s\n" "$VSIG"
+fi
+printf "SHA256: %s\n" "$SHA256" >> "$TFILE"
+printf "MD5: %s\n" "$MD5" >> "$TFILE"
+if [[ -n $IDIR ]]; then
+	 printf "A copy of the infected file(s) can be located in %s\n" "$IDIR" >> "$TFILE"
+fi
+mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID=$LOGSID;" >> "$TFILE"
+if [[ -e /opt/artemis/cache/$SHA256 ]]; then
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID IN ($IDLIST);" >> "$TFILE"
+fi
+# VirusTotal analysis
+if [[ -n $VTAPI ]]; then
+	# Check if an analysis already exists
+	if [[ $(curl -sI https://www.virustotal.com/en/file/"$SHA256"/analysis/ | awk '/^HTTP/ {print $2}') -ne 200 ]]; then	# Analysis does not exist
+		# Upload file to VirusTotal for scanning
+		VTOUT=$(curl -s --request POST \
+			--url 'https://www.virustotal.com/vtapi/v2/file/scan' \
+			--form 'apikey='"$VTAPI" \
+			--form 'file=@'"$1")
+		# Check if the file was too large to be scanned via API
+                if echo "$VTOUT" | grep -q "Your client issued a request that was too large."; then
+                        VTLINK="The file was too large to be automatically scanned via API. Please upload the file manually."
+                else
+                        # Extract the scan results link from the output
+                        VTLINK=$(echo -n "$VTOUT" | cut -d',' -f6 | sed 's/\( "permalink": "\|"\)//g')
+                fi
+	else
+		# VT analysis already exists
+		VTLINK="https://www.virustotal.com/en/file/$SHA256/analysis/"
+	fi
+else
+	# VT File analysis page
+	VTLINK="https://www.virustotal.com/en/file/$SHA256/analysis/"
+fi
+printf "VirusTotal: %s\n" "$VTLINK" >> "$TFILE"
+sendmail -vt < "$TFILE"
+rm -f "$TFILE"
+}
+
+file_integrity_chk() {	 # checks and, if necessary, waits for a file to finish being written to disk
+local hash
+while [[ $(md5sum "$1" | cut -d' ' -f1) != "$hash" ]]; do
+	hash=$(md5sum "$1" | cut -d' ' -f1)
+	sleep 0.1
+done
+}
+
+getSrcDst() {
+# Check the current log
+if [[ -e /opt/artemis/logs/artemis-files.log ]]; then
+	SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+	DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+fi
+
+# If the Source/Destination are not located there, check the most recently archived log file
+if [[ -z $SOURCE ]] || [[ -z $DEST ]] && [[ -f /opt/artemis/logs/artemis-files.log.1.gz ]]; then
+	TEMPID=$(date +%s%N)
+	file_integrity_chk /opt/artemis/logs/artemis-files.log.1.gz # Ensure that the file has been completely written to disk during log rotation before proceeding
+	cp /opt/artemis/logs/artemis-files.log.1.gz /tmp/artemis/"$TEMPID".temp.gz
+	gzip -d /tmp/artemis/"$TEMPID".temp.gz
+	SOURCE=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+	DEST=$(grep "$FILENAME" /tmp/artemis/"$TEMPID".temp | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+	rm /tmp/artemis/"$TEMPID".temp
+fi
+
+# If the Source/Destination are not located in the archived log either, then wait for the data to be written to the current log
+if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
+	for (( i=0; i < 120; i++ )); do # For loop, rather than while, prevents infinite loops caused by log rotation
+		local counter=0
+		while ! [[ -e /opt/artemis/logs/artemis-files.log ]]; do       # Prevents missing file errors during log rotation
+				sleep 0.1
+				((counter++))
+				if [[ $counter -ge 300 ]]; then	# Prevents an inifinite while loop
+					break 2
+				fi
+		done
+		SOURCE=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$2}' | sed 's/"//g')
+		DEST=$(grep "$FILENAME" /opt/artemis/logs/artemis-files.log | head -n1 | awk -F'[][]' '{print$4}' | sed 's/"//g')
+		if [[ -z $SOURCE ]] || [[ -z $DEST ]]; then
+			sleep 1
+		else
+			break
+		fi
+	done
+fi
+}
+
+
+prescan() {
+TSTAMP="$2"
+file_integrity_chk "$1"
+SHA256=$(sha256sum "$1" | cut -d' ' -f1)
+MD5=$(md5sum "$1" | cut -d' ' -f1)
+FILENAME=$(basename "$1")      # File name only
+getSrcDst
+LogsEntry "$1" "$SHA256" "$MD5" "$FILENAME"
+HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$SHA256' LIMIT 1;")
+if grep "$SOURCE" /opt/artemis/conf/blacklist | grep -vq "\#\|^$"; then		# Regex: Ignore comments and blank lines
+	# The source is present in the source blacklist
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=6 WHERE EntryID=$LOGSID;"
+	sendAlert "$1"
+	if [[ -n $IDIR ]]; then
+		mv "$1" "$IDIR$FILENAME"
+		chmod 600 "$IDIR$FILENAME"
+	fi
+elif grep "$SOURCE" /opt/artemis/conf/whitelist | grep -vq "\#\|^$"; then
+	# The source is present in the source whitelist
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=5 WHERE EntryID=$LOGSID;"
+elif grep "$SHA256\|$MD5" /opt/artemis/conf/blacklist | grep -vq "\#\|^$"; then
+        # The hash is present in the hash blacklist
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=4 WHERE EntryID=$LOGSID;"
+        sendAlert "$1"
+        if [[ -n $IDIR ]]; then
+                mv "1" "$IDIR$FILENAME"
+                chmod 600 "$IDIR$FILENAME"
+        fi
+elif grep "$SHA256\|$MD5" /opt/artemis/conf/whitelist | grep -vq "\#\|^$"; then
+        # The hash is present in the hash whitelist
+        mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=3 WHERE EntryID=$LOGSID;"
+elif [[ -n $HASHID ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE Hash='$SHA256' LIMIT 1;") -ne 2 ]]; then
+	# Hash is present in the Cache table and the result was not an error
+	RESULT=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Cache WHERE HashID=$HASHID;")
+	# Update the Logs and Cache table entries
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0 WHERE EntryID=$LOGSID;"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Cache SET Hits=Hits+1, TimeStamp=$(date +%s%N) WHERE HashID=$HASHID;"
+	if [[ $RESULT == "NULL" ]]; then
+		echo "$LOGSID" >> /opt/artemis/cache/"$SHA256"
+	else    # Result is present in the Cache table
+		## Update the result in the Logs table
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
+		if [[ $RESULT -eq 1 ]]; then
+			sendAlert "$1"
+			if [[ -n $IDIR ]]; then
+				mv "$1" "$IDIR$FILENAME"
+				chmod 600 "$IDIR$FILENAME"
+			fi
+		fi
+	fi
+else	# Hash does not exist in the Whitelist, Blacklist, or Cache tables
+	ENTRYTIME="$(date +%s).$(date +%N | head -c3)"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO ScanQueue (FileName, TimeStamp, LogsID, EntryTime) VALUES ('$1', '$TSTAMP', $LOGSID, $ENTRYTIME);"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Queued=1 WHERE EntryID=$LOGSID;"
+fi
+rm /opt/artemis/cache/prescans/"$BASHPID".pid
+}
+
+exec 2>> /var/log/artemis.err
+
+# Get variables from artemis.conf
+EMAIL=$(grep EMAIL "$CONF" | cut -d'=' -f2)
+MAXPRESCAN=$(grep MAXPRESCAN "$CONF" | cut -d'=' -f2)
+IDIR=$(grep IDIR "$CONF" | cut -d'=' -f2)
+VTAPI=$(grep VTAPI "$CONF" | cut -d'=' -f2)
+
+# Check that required variables contain values
+if [[ -z "$MAXPRESCAN" ]] || [[ -z "$EMAIL" ]]; then
+	echo Artemis: Invalid configuration detected! Check that the conf file has been properly configured.
+	exit 1
+fi
+
+if [[ -n $IDIR ]]; then
+	! [[ -d $IDIR ]] && mkdir -pm 600 "$IDIR"
+fi
+
+# Set a signal trap to initiate a graceful process shutdown
+SIGNAL=0
+trap "((SIGNAL++))" SIGHUP
+
+while [[ $SIGNAL -eq 0 ]]; do
+	if [[ $(free | grep ^Mem: | awk '{print $7}') -lt 204800 ]]; then       # If available memory drops below 200 MB, Artemis initiates an automatic stop
+                autoStop
+        fi
+	FILEID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileID FROM PreQueue ORDER BY TimeStamp ASC LIMIT 1;")
+	if [[ -n $FILEID ]]; then
+		FILE=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM PreQueue WHERE FileID=$FILEID;")
+		TSTAMP=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT TimeStamp FROM PreQueue WHERE FileID=$FILEID;")
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM PreQueue WHERE FileID=$FILEID;"
+		while [[ $(ls -A /opt/artemis/cache/prescans/ | wc -l) -ge $MAXPRESCAN ]]; do
+                        sleep 0.05
+                done
+		if [[ -f $FILE ]]; then
+			prescan  "$FILE" "$TSTAMP" &
+			# Add the prescanner to the prescan pid directory
+			touch /opt/artemis/cache/prescans/$!.pid
+		else
+			echo "$(date) preScan: $FILE - File not found! Skipping file." >> /var/log/artemis.err
+		fi
+	fi
+done
+
+exit

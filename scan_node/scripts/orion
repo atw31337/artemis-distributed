@@ -1,7 +1,6 @@
 #!/bin/bash
 # Title: orion
-# Description: Load balancer for Artemis NTVM. Orion monitors the Artemis queue and scans files as worker slots become available
-# Version: 1.00.00
+# Description: Load balancer for Artemis NTVM. Orion monitors the Artemis scan queue and scans files as worker slots become available
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +20,14 @@
 CONF=/etc/artemis.conf
 
 exec 2>> /var/log/artemis.err
+
+autoStop() {
+printf "%s: Low memory detected! Emergency stop sequence activated.\n" "$(date)" >> /var/log/artemis.err
+service artemis stop
+kill -9 "$(pgrep -x preScan)" 2> /dev/null
+kill -9 "$(pgrep -x orion | grep -v $BASHPID)" 2> /dev/null
+exit
+}
 
 sendAlert() {
 TFILE=$(mktemp -p /tmp/artemis/) # Temporary file for alert email output
@@ -68,14 +75,6 @@ sendmail -vt < "$TFILE"
 rm -f "$TFILE"
 }
 
-autoStop() {
-printf "%s: Low memory detected! Emergency stop sequence activated.\n" "$(date)" >> /var/log/artemis.err
-service artemis stop
-kill -9 "$(pgrep -x artemis | grep -v $PPID)" 2> /dev/null
-kill -9 "$(pgrep -x orion | grep -v $BASHPID)" 2> /dev/null
-exit
-}
-
 filescan() {
 SHA256=$(sha256sum "$1" | cut -d' ' -f1)
 MD5=$(md5sum "$1" | cut -d' ' -f1)
@@ -95,7 +94,7 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
 	rm /opt/artemis/cache/workers/$BASHPID.pid
 	if [[ $RESULT -eq 2 ]] && [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT Result FROM Logs WHERE EntryID=$LOGSID;") -ne 2 ]]; then
 		# If the result of the scan is an error and the file was scanned for the first time, then requeue the file for a second scan
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO Queue (FileName, TimeStamp, LogsID, EntryTime) VALUES ('$1', '$TSTAMP', $LOGSID,\
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO ScanQueue (FileName, TimeStamp, LogsID, EntryTime) VALUES ('$1', '$TSTAMP', $LOGSID,\
 		$(date +%s).$(date +%N | head -c3));"
 		# Update the Logs table with the result so orion knows that the file has been previously scanned
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Result=$RESULT WHERE EntryID=$LOGSID;"
@@ -188,12 +187,6 @@ else	# Hash is present in the Cache table
 fi
 }
 
-# Check that the configuration file exists
-if [[ ! -f $CONF ]]; then
-	echo Orion: Configuration file does nost exist!
-	exit 1
-fi
-
 # Get variables from artemis.conf
 DIR=$(grep SDIR "$CONF" | cut -d'=' -f2)
 EMAIL=$(grep EMAIL "$CONF" | cut -d'=' -f2)
@@ -213,16 +206,16 @@ SIGNAL=0
 trap  "((SIGNAL++))" SIGHUP
 
 while [[ $SIGNAL -eq 0 ]]; do
-	if [[ $(free | grep ^Mem: | awk '{print $7}') -lt 204800 ]]; then	# If available memory drops below 200 MB, Artemis initiates an automatic stop
-		autoStop
-	fi
-	if [[ $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT COUNT(*) FROM Queue;") -ne 0  ]]; then
-		FILEID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileID FROM Queue ORDER BY TimeStamp ASC LIMIT 1;")
-		FILE=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Queue WHERE FileID=$FILEID;")
-		TSTAMP=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT TimeStamp FROM Queue WHERE FileID=$FILEID;")
-		LOGSID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT LogsID FROM Queue WHERE FileID=$FILEID;")
-		ENTRYTIME=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT EntryTime FROM Queue WHERE FileID=$FILEID;")
-		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM Queue WHERE FileID=$FILEID;"
+	if [[ $(free | grep ^Mem: | awk '{print $7}') -lt 204800 ]]; then       # If available memory drops below 200 MB, Artemis initiates an automatic stop
+                autoStop
+        fi
+	FILEID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileID FROM ScanQueue ORDER BY TimeStamp ASC LIMIT 1;")
+	if [[ -n $FILEID ]]; then
+		FILE=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM ScanQueue WHERE FileID=$FILEID;")
+		TSTAMP=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT TimeStamp FROM ScanQueue WHERE FileID=$FILEID;")
+		LOGSID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT LogsID FROM ScanQueue WHERE FileID=$FILEID;")
+		ENTRYTIME=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT EntryTime FROM ScanQueue WHERE FileID=$FILEID;")
+		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "DELETE FROM ScanQueue WHERE FileID=$FILEID;"
 		while [[ $(ls -A /opt/artemis/cache/workers/ | wc -l) -ge $MAXPROC ]]; do
 			sleep 0.05
 		done
@@ -231,7 +224,7 @@ while [[ $SIGNAL -eq 0 ]]; do
 			# Add the worker to the workers pid directory
 			touch /opt/artemis/cache/workers/$!.pid
 		else
-			echo "$(date): $FILE - File not found! Skipping file." >> /var/log/artemis.err
+			echo "$(date) orion: $FILE - File not found! Skipping file." >> /var/log/artemis.err
 		fi
 	fi
 done
