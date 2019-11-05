@@ -155,7 +155,7 @@ FILENAME=$(basename "$1")      # File name only
 getSrcDst
 LogsEntry "$1" "$SHA256" "$MD5" "$FILENAME"
 HASHID=$(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT HashID FROM Cache WHERE Hash='$SHA256' LIMIT 1;")
-if grep "$SOURCE" /opt/artemis/conf/blacklist | grep -vq "\#\|^$"; then		# Regex: Ignore comments and blank lines
+if [[ -n $SOURCE ]] && grep "$SOURCE" /opt/artemis/conf/blacklist | grep -vq "\#\|^$"; then		# Regex: Ignore comments and blank lines
 	# The source is present in the source blacklist
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=6 WHERE EntryID=$LOGSID;"
 	sendAlert "$1"
@@ -163,7 +163,7 @@ if grep "$SOURCE" /opt/artemis/conf/blacklist | grep -vq "\#\|^$"; then		# Regex
 		mv "$1" "$IDIR$FILENAME"
 		chmod 600 "$IDIR$FILENAME"
 	fi
-elif grep "$SOURCE" /opt/artemis/conf/whitelist | grep -vq "\#\|^$"; then
+elif [[ -n $SOURCE ]] && grep "$SOURCE" /opt/artemis/conf/whitelist | grep -vq "\#\|^$"; then
 	# The source is present in the source whitelist
 	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=0, Queued=0, Result=5 WHERE EntryID=$LOGSID;"
 elif grep "$SHA256\|$MD5" /opt/artemis/conf/blacklist | grep -vq "\#\|^$"; then
