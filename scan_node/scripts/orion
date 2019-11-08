@@ -123,6 +123,7 @@ if [[ -z $HASHID ]]; then	# Hash does not exist in the Cache Table
 		SCANTIME=$(grep Time "$TLOG" | awk '{print $2}')
 		mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "UPDATE Logs SET Scanned=$SCANNED, Result=$RESULT, ScanTime=$SCANTIME \
 		WHERE EntryID=$LOGSID;"
+		sleep 1 # Pause to allow any other processes that may be adding duplicate file entries to finish
 		# If a duplicate hash file exists add the result to the Logs entries contained in the file
 		if [[ -e /opt/artemis/cache/$SHA256 ]]; then
 			# Find number of LogsIDs listed in the duplicate hash file
