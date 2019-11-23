@@ -1,22 +1,35 @@
 #!/bin/bash
 # Title: extract-cleanup
-# Description: When called by cron this script will check the percentage of used disk space and delete files from /opt/artemis/extracted, starting with the oldest first, 
-# until the disk usage is below the specified amount.
+# Description: This script will compare /opt/artemis/extracted against 3 parameters and delete files, starting with the oldest first,
+# until the parameter conditions have been met. Files will never be kept longer than the MAXDAYS parameter. They may be deleted sooner
+# if the THRESHOLD (max disk usage) or the max directory size is reached prior. The max disk usage will never be surpassed; however,
+# the size of the directory can be restricted to a smaller capacity using the MAXSIZE parameter.
 # Author: Andrew T. Withers (atw31337@gmail.com)
 
 # Max number of days to keep
 MAXDAYS=7
 
-find /opt/artemis/extracted/ -type f -mtime +"$((MAXDAYS-1))" -exec rm {} \;
-
-
 # Max disk usage
 THRESHOLD=80
 
+# Max size of extracted directory in MB
+MAXSIZE=
+
+# Max days
+find /opt/artemis/extracted/ -type f -mtime +"$((MAXDAYS-1))" -exec rm {} \;
+
+# Max disk usage
 while [[ $(df  | grep -w / | awk '{print $5}' | tr -d %) -ge $THRESHOLD ]]; do
-	rm /opt/artemis/extracted/$(ls -tr /opt/artemis/extracted/ | head -n1)
+        rm $(find /opt/artemis/extracted/ -printf "%T+\t%p\n" | sort | awk '{print $2}' | head -n5)
 done
 
+# Max directory size
+if [[ -n $MAXSIZE ]]; then
+	while [[ $(du -sBM /opt/artemis/extracted/ | awk '{print $1}' | tr -d M) -ge $MAXSIZE ]]; do
+		rm $(find /opt/artemis/extracted/ -printf "%T+\t%p\n" | sort | awk '{print $2}' | head -n5)
+	done
+fi
+
 exit
- 
+
 
