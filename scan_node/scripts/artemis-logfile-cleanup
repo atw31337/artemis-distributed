@@ -18,6 +18,8 @@
 #
 # Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
 
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
+
 MAXSIZE=5000000 # in bytes
 
 SIZE=$(stat -c%s /var/log/virus-scan.log)

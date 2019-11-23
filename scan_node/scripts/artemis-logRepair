@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
 
-exec 2>>/var/log/artemis.err
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
 
 # Only six hours of bro logs are kept archived; therefore, any entries that are are older than six hours and still missing data will have their
 # Source and Destination fields set to null. This will prevent logRepair from continuing its attempts at repairing these entries.

@@ -4,6 +4,8 @@
 # and processes any files that were missed on the first pass. No file gets left behind!
 # Author: Andrew T. Withers
 
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
+
 if [[ -n $(pgrep -x artemis) ]]; then
 	START=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBTIME(SYSDATE(), '6:00:0');")
 	END=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT ADDDATE('$START', '05:50:00');")

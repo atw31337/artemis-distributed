@@ -215,7 +215,7 @@ fi
 rm /opt/artemis/cache/prescans/"$BASHPID".pid
 }
 
-exec 2>> /var/log/artemis.err
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
 
 # Get variables from artemis.conf
 EMAIL=$(grep EMAIL "$CONF" | cut -d'=' -f2)
