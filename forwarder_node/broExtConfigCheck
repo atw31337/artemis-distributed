@@ -4,6 +4,8 @@
 # be replaced by the preconfigured file in /opt/artemis/.
 # Author: Andrew T. Withers (atw31337@gmail.com)
 
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
+
 configLocation=$(grep "EXT" /etc/artemis.conf | cut -d'=' -f2)
 cmp --silent "$configLocation" /opt/artemis/extract.conf || cp /opt/artemis/extract.conf "$configLocation" && so-bro-restart
 exit

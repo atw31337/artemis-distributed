@@ -28,7 +28,7 @@
 
 DIR=$(grep SDIR /etc/artemis.conf | cut -d'=' -f2)
 
-exec 2>> /var/log/artemis.err
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
 
 # Got r00t?
 if [[ $(id -u) -ne 0 ]]; then
