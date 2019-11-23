@@ -19,7 +19,7 @@
 
 case "$1" in
 start)
-        /usr/bin/artemisCollector & 2>>/var/log/artemis.err
+        /usr/bin/artemisCollector &
         ;;
 stop)
         pkill -9 "inotifywait"

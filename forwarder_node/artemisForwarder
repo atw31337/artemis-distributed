@@ -26,6 +26,7 @@
 #
 # Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
 
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
 
 MAXPROC=$(grep MAXPROC /etc/artemis.conf | cut -d'=' -f2)
 SCANNER=$(grep SCANNER /etc/artemis.conf | cut -d'=' -f2)
@@ -62,8 +63,6 @@ mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "INSERT INTO Queue (Da
 rm /opt/artemis/workers/"$BASHPID".pid
 exit
 }
-
-exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
 
 # Set a signal trap to initiate a graceful stop
 SIGNAL=0

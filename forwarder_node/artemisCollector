@@ -26,9 +26,9 @@
 #
 # Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
 
-DIR=$(grep SDIR /etc/artemis.conf | cut -d'=' -f2)
-
 exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
+
+DIR=$(grep SDIR /etc/artemis.conf | cut -d'=' -f2)
 
 # Got r00t?
 if [[ $(id -u) -ne 0 ]]; then
