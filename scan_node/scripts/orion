@@ -62,7 +62,8 @@ printf "MD5: %s\n" "$MD5" >> "$TFILE"
 
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID=$LOGSID;" >> "$TFILE"
 if [[ -e /opt/artemis/cache/$MD5 ]]; then
-	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID IN ($IDLIST);" >> "$TFILE"
+	mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName, Source, CONCAT('->') AS Arrow, Destination FROM Logs WHERE EntryID IN ($IDLIST);" \
+	>> "$TFILE"
 fi
 # VirusTotal analysis
 if [[ -n $VTAPI ]]; then
