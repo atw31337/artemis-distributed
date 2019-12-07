@@ -1,13 +1,12 @@
 # Title: parsOpts
 # Description: parsOpts is a bash function that can be used to parse the positional parameters of a shell script
 # into options and their corresponding arguments
-# Version: 1.00
 # Author: Andrew T. Withers
 
 # Set OPTIND global variable to zero
 OPTIND=0
 
-parsOpts ()
+parsOpts()
 {
 
 # Unset OPT and OPTARG global variables
@@ -16,20 +15,18 @@ unset OPTARG
 
 # Add all arguments (shell arguments + function argument) to the $args array
 local args=("$@")
-# Set OPTSTRING (Possible options and arguments) to the last element in $args
+# Set optstring (Possible options and arguments) to the last element in $args
 local optstring="${args[(($#-1))]}"
 # Remove the last element in args (optstring)
 unset "args[${#args[@]}-1]"
 
-## Parse OPTSTRING
-# Convert comma-separation to space-separation
-optstring="$(echo $optstring  | sed -e 's/,/ /g')"
-# Send options and their argument declarations to an array
-local optstringarr=($optstring)
+## Parse optstring
+# Send the options and their argument declarations to an array
+local optstringarr=($(echo $optstring  | sed -e 's/,/ /g'))
 # Create an associative array in which the option is the key and the number of arguments for that option is the value. '-1' represents unknown number of options
 declare -A opt_args
 for i in "${optstringarr[@]}"; do
-	if [[ $(printf "%s" "$i" | grep -o ':' | grep -c ':') -eq 2 ]]; then		# Number of args is 0 > infinity (double ':' = Unknown)
+	if [[ $(printf "%s" "$i" | grep -o ':' | grep -c ':') -eq 2 ]]; then		# Number of args is unknown (double ':')
 		opt_args[$(printf "%s" "$i" | cut -d':' -f1)]=-1
 	elif [[ $(printf "%s" "$i" | grep -c ':') -eq 0 ]]; then		# Number of args is 0 (no ':')
 		opt_args["$i"]=0
@@ -46,7 +43,7 @@ for i in "${optstringarr[@]}"; do
 	fi
 done
 
-# Validate the integrity of the optstring. Ensure that each key has a positive or negative integer value
+# Validate the integrity of the optstring. Ensure that each key has an integer value
 for i in "${!opt_args[@]}"; do
 	if ! [[ ${opt_args["$i"]} =~ ^[+-]?[0-9]+$ ]] || [[ ${opt_args["$i"]} -lt -1 ]]; then
 		OPTARG="$i"
@@ -61,17 +58,17 @@ done
 if [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) != '-' ]]; then
 	break
 else
-	# Check if more stringed short options require processing
-	if [[ -n $____Stringed_Short_Option ]]; then
-		# Get the next opt and remove it from the global string
-		OPT=$(printf "%s" "$____Stringed_Short_Option" | head -c1)
-		____Stringed_Short_Option=$(printf "%s" "$____Stringed_Short_Option" | cut -c 2-)
+	# Check if more stringed short options require processing. Note: ____Stringed_Short_Index accounts for the '-' prefix in the stringed option (args[$OPTIND])
+	if [[ -n $____Stringed_Short_Index ]] && [[ $____Stringed_Short_Index -le $(printf "%s" "${args[$OPTIND]}" | wc -c) ]]; then
+		# Get the next opt from the string and increment the stringed short option index
+		OPT=$(printf "%s" "${args[$OPTIND]}" | cut -c "$____Stringed_Short_Index")
+		((____Stringed_Short_Index+=1))
 		# Check that the OPT is a key in opt_args
 		if echo "${!opt_args[@]}" | grep -qw "$OPT"; then
 			# Find the number of arguments that should be assosciated with this option
 			local numargs="${opt_args[$OPT]}"
 			if [[ $numargs  =~ ^[1-9]+$ ]]; then  # numargs is a positive integer. The option requires a specific number of args
-				# Add the numargs number of arguments to the OPTARG string. If to few arguments exist, return OPT as OPTARG, OPT as ':', and NUMARGS
+				# Add the numargs number of arguments to the OPTARG string. If too few arguments exist, return OPT as OPTARG, OPT as ':', and NUMARGS
 				local arg_count=0
 				for (( i=$((OPTIND+1)); i<=$((OPTIND+numargs)); i++ )); do
 					if [[ $(printf "%s" "${args["$i"]}" | head -c1) != '-' ]] && [[ -n ${args["$i"]} ]]; then
@@ -112,7 +109,7 @@ else
 		fi
 		# If all of the options in the stringed short option have been processed, shift the number
 		# of arguments of the option with the highest argument count
-		if [[ -z $____Stringed_Short_Option ]]; then
+		if [[ $____Stringed_Short_Index -gt $(printf "%s" "${args[$OPTIND]}" | wc -c) ]]; then
 			if [[ -z $____Stringed_Short_Option_Highest_Arg_Count ]]; then
 				____Stringed_Short_Option_Highest_Arg_Count=0
 			fi
@@ -144,13 +141,13 @@ else
 					OPTIND=$(($OPTIND+numargs+1))	# Shift the appropriate number of arguments (arguments + option)
 				else
 					((OPTIND++))	# Shift the option
-					while [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) != '-' ]] &&  [[ $OPTIND -lt $# ]]; do	# Shift until an option is found or end of arguments
+					while [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) != '-' ]] &&  [[ $OPTIND -lt ${#args[@]} ]]; do	# Shift until an option is found or end of arguments
 						((OPTIND++))
 					done
 				fi
 			elif [[ $numargs -eq -1 ]]; then 	# An unknown number of arguments are attached to this option
 				((OPTIND++))	# Shift the option
-				while [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) != '-' ]] && [[ $OPTIND -lt $# ]]; do	# While the argument is not an option and not end of arguments
+				while [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) != '-' ]] && [[ $OPTIND -lt ${#args[@]} ]]; do	# While the argument is not an option and not end of arguments
 					OPTARG+="${args[$OPTIND]} "	# Add the argument to the arguments string
 					((OPTIND++))	# Shift the argument
 				done
@@ -168,8 +165,8 @@ else
 		fi
 	elif [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) == '-' ]] && [[ $(printf "%s" "${args[$OPTIND]}" | cut -c 3) != '' ]]; then		# Stringed short option
 		OPT=$(printf "%s" "${args[$OPTIND]}" | cut -c 2)	# The second character in the string is the first option to be processed
-		# Remove the first option from the string and add the rest to the stringed options global (____Stringed_Short_Option)
-		____Stringed_Short_Option=$(printf "%s" "${args[$OPTIND]}" | cut -c 3-)
+		# Set the stringed short option index global variable to the third character in the string (second option)
+		____Stringed_Short_Index=3
 		# Check that OPT is a key in opt_args
 		if echo "${!opt_args[@]}" | grep -qw "$OPT"; then
 			# Find the number of arguments that should be associated with this option
@@ -232,13 +229,13 @@ else
 					OPTIND=$(($OPTIND+numargs+1))    # Shift the appropriate number of arguments (arguments + option)
 				else
 					((OPTIND++))   # Shift the option
-					while [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) != '-' ]] && [[ $OPTIND -lt $# ]]; do  # Shift until an option is found or end of arguments
+					while [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) != '-' ]] && [[ $OPTIND -lt ${#args[@]} ]]; do  # Shift until an option is found or end of arguments
 						((OPTIND++))
 					done
 				fi
 			elif [[ $numargs -eq -1 ]]; then	# An unknown number of arguments are attached to this option
 				((OPTIND++))   # Shift the option
-				while [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) != '-' ]] && [[ $OPTIND -lt $# ]]; do  # While the argument is not an option and not end of arguments
+				while [[ $(printf "%s" "${args[$OPTIND]}" | head -c1) != '-' ]] && [[ $OPTIND -lt ${#args[@]} ]]; do  # While the argument is not an option and not end of arguments
 					OPTARG+=$(printf "%s" "${args[$OPTIND]} ")    # Add the argument to the arguments string
 					((OPTIND++))   # Shift the argument
 				done
