@@ -22,7 +22,7 @@ find /opt/artemis/extracted/ -type f -mtime +"$((MAXDAYS-1))" -exec rm {} \;
 
 # Max disk usage
 while [[ $(df  | grep -w / | awk '{print $5}' | tr -d %) -ge $THRESHOLD ]]; do
-        rm $(find /opt/artemis/extracted/ -printf "%T+\t%p\n" | sort | awk '{print $2}' | head -n5)
+        rm $(find /opt/artemis/extracted/ -type f -printf "%T+\t%p\n" | sort | awk '{print $2}' | head -n5)
 done
 
 # Max directory size
