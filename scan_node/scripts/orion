@@ -19,7 +19,8 @@
 
 CONF=/etc/artemis.conf
 
-exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
+exec 2>> /var/log/artemis.err
+# exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
 
 autoStop() {
 printf "%s: Low memory detected! Emergency stop sequence activated.\n" "$(date)" >> /var/log/artemis.err
