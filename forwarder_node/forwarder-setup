@@ -68,7 +68,7 @@ chmod 600 /etc/artemis.conf
 uninstall () {
 
 # Checking for a running instance of artemiForwarder
-if [[ -n $(pgrep -x artemisCollector) ]]; then
+if [[ -n $(pgrep -x artemisCollecto) ]]; then	# pgrep only matches on the first 15 characters
 	echo "Shutting down Artemis-Forwarder..."
 	systemctl stop artemis-forwarder
 fi
@@ -256,7 +256,7 @@ while ! [[ $MAXPROC =~ ^[1-9]+$ ]]; do
 done
 
 # Check for a running instanace of Artemis forwarder
-if [[ -n $(pgrep -x artemisCollector) ]]; then
+if [[ -n $(pgrep -x artemisCollecto) ]]; then	# pgrep will only match on the first 15 characters
         echo "Shutting down Artemis-Forwarder..."
         systemctl stop artemis-forwarder
 fi
