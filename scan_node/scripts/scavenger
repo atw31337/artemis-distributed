@@ -14,7 +14,7 @@ if [[ -n $(pgrep -x artemis) ]] && [[ $(pgrep -c scavenger) -lt 3 ]]; then
 	printf "/opt/artemis/extracted/%s\n" $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileName FROM Logs \
 	WHERE DateTime > '$START';") | sort > /tmp/processed.output
 	# Files that were forwarded
-	find /opt/artemis/extracted/ -type f -newermt "$START" ! -newermt "$END" | sort > /tmp/forwarded.output 2> /dev/null
+	find /opt/artemis/extracted/ -type f -newermt "$START" ! -newermt "$END" | sort > /tmp/forwarded.output
 
 	# Compare the two lists of files and output the files that were not processed
 	comm -13 /tmp/processed.output /tmp/forwarded.output > /tmp/missed.output
