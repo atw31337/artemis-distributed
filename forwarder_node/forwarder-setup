@@ -1,7 +1,7 @@
 #!/bin/bash
 # Title: forwarder-setup
 # Description: This script will automate the tasks required to install artemis forwarder nodes in a distributed deployment architecture
-# Version: 1.04
+# Version: 1.05
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw31337@gmail.com)
 
-VERSION=1.04
+VERSION=1.05
 
 usage ()
 {
@@ -271,9 +271,9 @@ fi
 
 # Search for extract.bro
 updatedb
-case $(locate -c extract.bro) in
+case $(locate -c extract.zeek) in
         0)
-                echo "Unable to locate extract.bro file. Verify that Bro is installed and properly configured to extract files."
+                echo "Unable to locate extract.zeek file. Verify that Bro is installed and properly configured to extract files."
                 echo "Aborting installation..."
                 if [[ $CLEAN -eq 1 ]]; then
                         apt-get -y purge mlocate > /dev/null 2>&1
@@ -281,11 +281,11 @@ case $(locate -c extract.bro) in
                 exit 1
                 ;;
         1)
-                EXTLOC=$(locate extract.bro)
+                EXTLOC=$(locate extract.zeek)
                 ;;
         *)
-                LIST=($(locate extract.bro))
-                printf "Mulitple instances of extract.bro were found: \n"
+                LIST=($(locate extract.zeek))
+                printf "Mulitple instances of extract.zeek were found: \n"
                 for ((i=0; i<"${#LIST[@]}"; i++)); do
                         echo "$((i+1))) ${LIST[$i]}"
                 done
