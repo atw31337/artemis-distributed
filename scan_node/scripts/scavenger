@@ -29,7 +29,7 @@ if [[ -n $(pgrep -x artemis) ]] && [[ $(pgrep -c scavenger) -lt 3 ]]; then
 		((count+=1))
 		[[ -n $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileID FROM PreQueue WHERE FileName='$line';") ]] || artemis -f "$line"
 		# Stop adding files to the queue once the maxRecover limit has been met
-		[[ -n $count ]] && [[ $count -gt $maxRecover ]] && break
+		[[ -n $maxRecover ]] && [[ $count -gt $maxRecover ]] && break
 		sleep 0.2	# Stagger file processing to prevent system overloading
 	done < /tmp/missed.output
 
