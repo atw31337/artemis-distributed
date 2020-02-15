@@ -427,7 +427,7 @@ if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -xq ope
 	echo "Installing openssh-server.."
 	apt-get -y install openssh-server > /dev/null 2>&1
 fi
-if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -qx syslog-ng; then
+if ! dpkg --get-selections | grep -v deinstall | awk '{print $1}' | grep -q syslog-ng; then
 	echo "Installing syslog-ng..."
 	apt-get -y install syslog-ng-core > /dev/null 2>&1
 fi
