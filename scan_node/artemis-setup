@@ -330,7 +330,7 @@ else	# If Interactive Mode is selected then acquire artemis.conf settings from t
                 fi
         done
 	while ! [[ $MAXPRESCAN =~ ^[1-9]+$ ]]; do
-                read -p 'Artemis: Enter the maximum number of PreScan processes [15]: ' MAXPROC
+                read -p 'Artemis: Enter the maximum number of PreScan processes [15]: ' MAXPRESCAN
                 if [[ -z $MAXPRESCAN ]]; then
                         MAXPRESCAN=15
                 fi
