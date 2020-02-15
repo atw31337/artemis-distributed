@@ -245,12 +245,12 @@ while [[ -z $SCANNER ]]; do
 		echo "Invalid response. Try again."
 	fi
 done
-while ! [[ $MAXPROC =~ ^[1-9]+$ ]]; do
+while ! [[ $MAXPROC =~ ^[0-9]+$ ]] || [[ $MAXPROC -lt 1 ]]; do
 	read -p 'Enter the maximum number of concurrent forwarder processes [15]: ' MAXPROC
 	if [[ -z $MAXPROC ]]; then
 		MAXPROC=15
 	fi
-	if ! [[ $MAXPROC =~ ^[1-9]+$ ]]; then
+	if ! [[ $MAXPROC =~ ^[0-9]+$ ]] || [[ $MAXPROC -lt 1 ]]; then
 		echo "Invalid response. Try again."
 	fi
 done

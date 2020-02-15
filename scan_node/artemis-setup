@@ -320,21 +320,21 @@ if [[ $MODE -eq 1 ]];then
                 exit 1
         fi
 else	# If Interactive Mode is selected then acquire artemis.conf settings from the user
-	while ! [[ $MAXPROC =~ ^[1-9]+$ ]]; do
+	while ! [[ $MAXPROC =~ ^[0-9]+$ ]] || [[ $MAXPROC -lt 1 ]]; do
                 read -p 'Artemis: Enter the maximum number of concurrent scan processes [4]: ' MAXPROC
                 if [[ -z $MAXPROC ]]; then
                         MAXPROC=4
                 fi
-                if ! [[ $MAXPROC =~ ^[1-9]+$ ]]; then
+                if ! [[ $MAXPROC =~ ^[0-9]+$ ]] || [[ $MAXPROC -lt 1 ]]; then
                         echo "Invalid response. Try again."
                 fi
         done
-	while ! [[ $MAXPRESCAN =~ ^[1-9]+$ ]]; do
+	while ! [[ $MAXPRESCAN =~ ^[0-9]+$ ]] || [[ $MAXPRESCAN -lt 1 ]]; do
                 read -p 'Artemis: Enter the maximum number of PreScan processes [15]: ' MAXPRESCAN
                 if [[ -z $MAXPRESCAN ]]; then
                         MAXPRESCAN=15
                 fi
-                if ! [[ $MAXPRESCAN =~ ^[1-9]+$ ]]; then
+                if ! [[ $MAXPRESCAN =~ ^[0-9]+$ ]] || $MAXPRESCAN -lt 1 ]]; then
                         echo "Invalid response. Try again."
                 fi
         done
@@ -347,12 +347,12 @@ else	# If Interactive Mode is selected then acquire artemis.conf settings from t
                         echo "Invalid response. Try again."
                 fi
         done
-        while ! [[ $LOGSDATA =~ ^[0-9]+$ ]] || [[ $LOGSDATA -gt 365 ]]; do
+        while ! [[ $LOGSDATA =~ ^[0-9]+$ ]] || [[ $LOGSDATA -gt 365 ]] || [[ $LOGSDATA -lt 0 ]]; do
                 read -p 'Artemis: How many days worth of log data should be maintained? (0-365) [14]: ' LOGSDATA
                 if  [[ -z $LOGSDATA ]]; then
                         LOGSDATA=14
                 fi
-                if  ! [[ $LOGSDATA =~ ^[0-9]+$ ]] || [[ $LOGSDATA -gt 365 ]]; then
+                if  ! [[ $LOGSDATA =~ ^[0-9]+$ ]] || [[ $LOGSDATA -gt 365 ]] || [[ $LOGSDATA -lt 0 ]]; then
                         echo "Invalid response. Try again."
                 fi
 	done
