@@ -116,7 +116,7 @@ fi
 
 # Create a worker pid directory in the cache
 [[ -d /opt/artemis/cache/workers/ ]] || mkdir /opt/artemis/cache/workers/
-[[ -d /opt/artemis/cache/workers/ ]] || mkdir /opt/artemis/cache/prescans/
+[[ -d /opt/artemis/cache/prescans/ ]] || mkdir /opt/artemis/cache/prescans/
 
 # Truncate the PreQueue and ScanQueue tables. Ensures that the queues are emtpy at start up.
 mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -e "TRUNCATE TABLE ScanQueue;"
