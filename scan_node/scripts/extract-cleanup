@@ -6,7 +6,7 @@
 # the size of the directory can be restricted to a smaller capacity using the MAXSIZE parameter.
 # Author: Andrew T. Withers (atw31337@gmail.com)
 
-exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T') extract-cleanup: /" >> /var/log/artemis.err)
 
 # Max number of days to keep
 MAXDAYS=7

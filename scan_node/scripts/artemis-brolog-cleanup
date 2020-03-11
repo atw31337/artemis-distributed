@@ -18,7 +18,7 @@
 #
 # Author: Andrew Withers (atw127@psu.edu, atw31337@gmail.com)
 
-exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T') artemis-brolog-cleanup: /" >> /var/log/artemis.err)
 
 # Ensure that all archived log files are currently zipped
 gzip /opt/artemis/logs/artemis-files.log.* > /dev/null 2>&1
