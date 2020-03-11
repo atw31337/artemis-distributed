@@ -402,7 +402,7 @@ if ! dpkg --get-selections | grep -v deinstall | grep -q postfix; then
         sed -i "34s/.*/mydestination = $HOSTNAME, localhost.localdomain, localhost, $HOSTNAME.$(cat /etc/mailname)/" /etc/postfix/main.cf
         sed -i "35s/.*/relayhost = $RELAYHOST/" /etc/postfix/main.cf
         cp ./conf/hosts /etc/hosts
-        sed -i "2s/.*/127.0.1.1       $(cat /etc/mailname) $HOSTNAME/" /etc/hosts
+        sed -i "2s/.*/127.0.1.1       $HOSTNAME $(cat /etc/mailname)/" /etc/hosts
         postfix reload > /dev/null 2>&1
 fi
 if ! dpkg --get-selections | grep -v deinstall | grep -q inotify-tools; then
