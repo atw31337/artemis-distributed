@@ -11,7 +11,7 @@ exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
 maxRecover=30
 
 # Ensure that artemis is running and that another instance of scavenger is not already running
-if [[ -n $(pgrep -x artemis) ]] && [[ $(pgrep -c scavenger) -lt 3 ]]; then
+if [[ -n $(pgrep -x artemis) ]] && [[ $(pgrep -c scavenger) -le 2 ]]; then
 	START=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT SUBTIME(SYSDATE(), '6:00:0');")
 	END=$(mysql --defaults-file=/etc/mysql/debian.cnf -BN -e "SELECT ADDTIME('$START', '05:50:00');")
 	# Files that were processed
@@ -26,10 +26,10 @@ if [[ -n $(pgrep -x artemis) ]] && [[ $(pgrep -c scavenger) -lt 3 ]]; then
 	# Process the list of files that were previously missed
 	count=0
 	while read line; do
-		((count+=1))
-		[[ -n $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileID FROM PreQueue WHERE FileName='$line';") ]] || artemis -f "$line"
+		[[ -n $(mysql --defaults-file=/etc/mysql/debian.cnf -D artemis -BN -e "SELECT FileID FROM PreQueue WHERE FileName='$line';") ]] \
+		|| artemis -f "$line" && ((count+=1))
 		# Stop adding files to the queue once the maxRecover limit has been met
-		[[ -n $maxRecover ]] && [[ $count -gt $maxRecover ]] && break
+		[[ -n $maxRecover ]] && [[ $count -ge $maxRecover ]] && break
 		sleep 0.2	# Stagger file processing to prevent system overloading
 	done < /tmp/missed.output
 
