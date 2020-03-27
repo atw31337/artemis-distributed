@@ -14,40 +14,40 @@
 
 ################################# Description ###########################################
 # Artemis forwarder nodes monitor a specific directory for new files that are extracted #
-# from the bitstream by Bro NSM. These files are then sent to the scanner node to be    #
-# processed and, if necessary, scanned for viruses. The primary process, on the scanner #
-# node, passes the task to a child node for prescan operations, such as comparing the 	#
-# file hash against a blacklist, a whitelist, and a list of files that	have already	# 
-# been scanned. If prescan determines that the file does need scanning, it is then 	#
-# added to the queue. A second script, Orion, monitors the queue and distributes the 	#
-# workload to worker processes. The maximum number of concurrent worker processes can	# 
-# be tuned to provide minimal time to scan without overloadig the system's available	# 
-# resources. The worker process will collect file data, perform the scan, and log the	# 
-# results. If the file is determined to be infected, an email is dispatched to the	#
-# address(es) specified in the configuration.						#
+# from the bitstream by Bro/Zeek NSM. These files are then sent to the scanner node to	# 
+# be processed and, if necessary, scanned for viruses. The primary process, on the	#
+# scanner node, passes the task to a child node, via a queue, for prescan operations,	# 
+# such as comparing the	file hash against a blacklist, a whitelist, and a list of files #
+# that have already been scanned. If prescan determines that the file requires scanning,# 
+# it is then added to the scan queue. A second script, Orion, monitors that queue and	#
+# distributes the workload to worker processes. The maximum number of concurrent	#
+# prescan and worker processes can be tuned to provide minimal time to scan without	#
+# overloadig the system's available resources. The worker process will collect file	#
+# data, perform the scan, and log the results. If the file is determined to be		#
+# infected, an email is dispatched to the address(es) specified in the configuration.	#
 #########################################################################################
 
 
 #################################### Notes ##############################################
 # Artemis was designed for, and tested on, Ubuntu 16.04 running Security Onion NSM.     #
-# At a minimum, Artemis requires that the Bro NSM be installed. Bro is utilized         #
-# to extract executable files from the network data stream allowing them to be		#  
+# At a minimum, Artemis requires that the Bro/Zeek NSM be installed. Bro/Zeek is	#
+# utilized to extract executable files from the network data stream allowing them to be	#  
 # inspected for known viruses. Artemis "may" be compatible with other flavors of Debian #
 # Linux, so long as the systemd service manager is utilized; however, Ubuntu is the     #
-# only flavor that has been tested and is currently supported.                          #
-#                                                                                       #
-# Ubuntu 16.04 downloads:                                                               #  
-# http://releases.ubuntu.com/xenial/                                                    #
-#                                                                                       # 
-# For more information about Security Onion visit:                                      #
-# https://securityonion.net/                                                            #
-#                                                                                       #
-# For more information about Bro visit:                                                 #
-# https://www.bro.org/                                                                  #
-#	                                                                                #
-# Questions, suggestions, and problem reporting:                                        #
-# https://groups.google.com/forum/#!forum/artemis-ntvm                                  #
-#                                                                                       # 
+# only flavor that has been tested and is currently supported.				#
+#											#
+# Ubuntu 16.04 downloads:								#  
+# http://releases.ubuntu.com/xenial/							#
+#											# 
+# For more information about Security Onion visit:					#
+# https://securityonion.net/								#
+#											#
+# For more information about Bro/Zeek visit:						#
+# https://www.zeek.org/									#
+#											#
+# Questions, suggestions, and problem reporting:					#
+# https://groups.google.com/forum/#!forum/artemis-ntvm					#
+#											# 
 #########################################################################################
 
 
@@ -64,9 +64,11 @@
 	must be a member of the sudo group during installation . This account will 
 	continue to be used by the forwarders post-installation; however, sudo privileges 
 	will no longer be required.
-	*Create an artemis user account on the scan node and add it to the sudo group
+	* Create an artemis user account on the scan node and add it to the sudo group
+		sudo adduser artemis 
 		sudo adduser artemis sudo
-	*Remove this account from sudo after all forwarder nodes have been installed.
+	
+	* Remove this account from sudo after all forwarder nodes have been installed.
 		sudo deluser artemis sudo 
 
 # Scanning node installation:
@@ -75,7 +77,7 @@
 	prompts or automatically by using an answer file. An answer file template, 
 	install.conf, is located in the conf directory. Copy this file and edit each 
 	field with the appropriate configurations. Run an automatic installation using 
-	-f option and the location of the answer file.
+	the -f option and the location of the answer file.
 		./artemis-setup -f </path/to/answer/file>
 	Alternatively, perform an interactive installation by running the installer
 	without any options.
@@ -113,11 +115,10 @@ Usage: artemis [OPTION]
 		-v			Print version information
 		-f <file>		Force process a file
 		-p			Purge the hash cache
-		-s <Source IPv4>	Add a source IP to the whitelist
-		-o <Source IPv4>	Add a source IP to the blacklist
-		-w <Hash>		Add a SHA256 or MD5 hash to the whitelist
-		-b <Hash>		Add a SHA256 or MD5 hash to the blacklist
-
+# Notes:
+# Hashes and source IP addresses can be either whitelisted or blacklisted. This can be done
+# by adding the source IP address or the hash, Md5 or SHA256, to the whitelist or blacklist
+# files located in /opt/artemis/conf/ on the scan node.
 
 ############################### Auxiliary Scripts ###########################################
 
