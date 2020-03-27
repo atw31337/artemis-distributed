@@ -6,7 +6,7 @@
 # the size of the directory can be restricted to a smaller capacity using the MAXSIZE parameter.
 # Author: Andrew T. Withers (atw31337@gmail.com)
 
-exec 2> >(sed "s/^/$(date +'%b %e %Y %T'): /" >> /var/log/artemis.err)
+exec 2> >(sed "s/^/$(date +'%b %e %Y %T') extract-cleanup: /" >> /var/log/artemis.err)
 
 # Max number of days to keep
 MAXDAYS=7
@@ -18,6 +18,8 @@ THRESHOLD=80
 MAXSIZE=
 
 # Max days
+# When find figures out how many 24-hour periods ago the file was last accessed, any fractional part is ignored, so to
+# match -mtime +1, a file has to have been accessed at least two days ago; therefore, the appropriate time argument is +$((MAXDAYS-1)).
 find /opt/artemis/extracted/ -type f -mtime +"$((MAXDAYS-1))" -exec rm {} \;
 
 # Max disk usage
