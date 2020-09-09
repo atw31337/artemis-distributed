@@ -42,7 +42,7 @@ exit
 
 file_integrity_chk() {         # checks and, if necessary, waits for a file to finish being written to disk
 local hash
-while [[ "$(sha256sum $1 | cut -d' ' -f1)" != "$hash" ]]; do
+while [[ "$(sha256sum $1 | cut -d' ' -f1)" != "$hash" ]] || [[ -n $(lsof $1) ]]; do
         hash="$(sha256sum $1 | cut -d' ' -f1)"
         sleep 0.1
 done
