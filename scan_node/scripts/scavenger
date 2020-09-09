@@ -10,9 +10,11 @@ exec 2> >(sed "s/^/$(date +'%b %e %Y %T') scavenger: /" >> /var/log/artemis.err)
 # Attempting to recover to many files at one time can result in overloading the queue
 maxRecover=30
 
-# scavenger produces stat errors when it run concurrently with  extract-cleanup; therefore
-# if extract-cleanup is running, then scavenger will pause for 60 seconds
-[[ -n $(pgrep extract-cleanup) ]] && sleep 60
+# scavenger produces stat errors when it is run concurrently with extract-cleanup; therefore
+# if extract-cleanup is running, then scavenger will pause until it has finished
+while [[ -n $(pgrep extract-cleanup) ]]; do
+	sleep 10
+done
 
 # Ensure that artemis is running and that another instance of scavenger is not already running
 if [[ -n $(pgrep -x artemis) ]] && [[ $(pgrep -c scavenger) -le 2 ]]; then
