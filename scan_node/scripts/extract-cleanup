@@ -17,6 +17,11 @@ THRESHOLD=80
 # Max size of extracted directory in MB
 MAXSIZE=
 
+# Ensure that scavenger is not running and wait if it is
+while [[ -n $(pgrep -x scavenger) ]]; do
+	sleep 10
+done
+
 # Max days
 # When find figures out how many 24-hour periods ago the file was last accessed, any fractional part is ignored, so to
 # match -mtime +1, a file has to have been accessed at least two days ago; therefore, the appropriate time argument is +$((MAXDAYS-1)).
